@@ -1,29 +1,29 @@
-import sqlite3
 from typing import List, Optional
 
 from domain import Customer
 from application import CustomerRepository
+from .supabase_client import get_client
 
 
-class SqliteCustomerRepository(CustomerRepository):
-    def __init__(self, connection: sqlite3.Connection):
-        self._conn = connection
+class SupabaseCustomerRepository(CustomerRepository):
+    def __init__(self):
+        self._client = get_client()
 
     def add(self, customer: Customer) -> Customer:
-        cursor = self._conn.execute(
-            "INSERT INTO customers (name, phone) VALUES (?, ?)",
-            (customer.name, customer.phone),
-        )
-        self._conn.commit()
-        customer.id = cursor.lastrowid
+        result = self._client.table("customers").insert(
+            {"name": customer.name, "phone": customer.phone}
+        ).execute()
+        row = result.data[0]
+        customer.id = row["id"]
         return customer
 
     def get(self, customer_id: int) -> Optional[Customer]:
-        row = self._conn.execute(
-            "SELECT id, name, phone FROM customers WHERE id = ?", (customer_id,)
-        ).fetchone()
-        return Customer(*row) if row else None
+        result = self._client.table("customers").select("*").eq("id", customer_id).execute()
+        if not result.data:
+            return None
+        row = result.data[0]
+        return Customer(id=row["id"], name=row["name"], phone=row["phone"])
 
     def list_all(self) -> List[Customer]:
-        rows = self._conn.execute("SELECT id, name, phone FROM customers").fetchall()
-        return [Customer(*row) for row in rows]
+        result = self._client.table("customers").select("*").execute()
+        return [Customer(id=row["id"], name=row["name"], phone=row["phone"]) for row in result.data]

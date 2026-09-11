@@ -1,32 +1,29 @@
-import sqlite3
 from typing import List, Optional
 
 from domain import ItemClass
 from application import ItemClassRepository
+from .supabase_client import get_client
 
 
-class SqliteItemClassRepository(ItemClassRepository):
-    def __init__(self, connection: sqlite3.Connection):
-        self._conn = connection
+class SupabaseItemClassRepository(ItemClassRepository):
+    def __init__(self):
+        self._client = get_client()
 
     def add(self, item_class: ItemClass) -> ItemClass:
-        cursor = self._conn.execute(
-            "INSERT INTO item_classes (name, base_price) VALUES (?, ?)",
-            (item_class.name, item_class.base_price),
-        )
-        self._conn.commit()
-        item_class.id = cursor.lastrowid
+        result = self._client.table("item_classes").insert(
+            {"name": item_class.name, "base_price": item_class.base_price}
+        ).execute()
+        row = result.data[0]
+        item_class.id = row["id"]
         return item_class
 
     def get(self, item_class_id: int) -> Optional[ItemClass]:
-        row = self._conn.execute(
-            "SELECT id, name, base_price FROM item_classes WHERE id = ?",
-            (item_class_id,),
-        ).fetchone()
-        return ItemClass(*row) if row else None
+        result = self._client.table("item_classes").select("*").eq("id", item_class_id).execute()
+        if not result.data:
+            return None
+        row = result.data[0]
+        return ItemClass(id=row["id"], name=row["name"], base_price=row["base_price"])
 
     def list_all(self) -> List[ItemClass]:
-        rows = self._conn.execute(
-            "SELECT id, name, base_price FROM item_classes"
-        ).fetchall()
-        return [ItemClass(*row) for row in rows]
+        result = self._client.table("item_classes").select("*").execute()
+        return [ItemClass(id=row["id"], name=row["name"], base_price=row["base_price"]) for row in result.data]

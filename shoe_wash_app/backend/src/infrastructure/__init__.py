@@ -1,13 +1,13 @@
-from .database import get_connection
-from .customer_repository import SqliteCustomerRepository
-from .item_class_repository import SqliteItemClassRepository
-from .load_repository import SqliteLoadRepository
-from .expense_repository import SqliteExpenseRepository
+from .supabase_client import get_client
+from .customer_repository import SupabaseCustomerRepository
+from .item_class_repository import SupabaseItemClassRepository
+from .load_repository import SupabaseLoadRepository
+from .expense_repository import SupabaseExpenseRepository
 
 __all__ = [
-    "get_connection",
-    "SqliteCustomerRepository",
-    "SqliteItemClassRepository",
-    "SqliteLoadRepository",
-    "SqliteExpenseRepository",
+    "get_client",
+    "SupabaseCustomerRepository",
+    "SupabaseItemClassRepository",
+    "SupabaseLoadRepository",
+    "SupabaseExpenseRepository",
 ]

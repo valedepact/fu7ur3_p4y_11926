@@ -1,45 +1,45 @@
-import sqlite3
 from datetime import date, datetime
 from typing import List
 
 from domain import Load
 from application import LoadRepository
+from .supabase_client import get_client
 
 
-class SqliteLoadRepository(LoadRepository):
-    def __init__(self, connection: sqlite3.Connection):
-        self._conn = connection
+class SupabaseLoadRepository(LoadRepository):
+    def __init__(self):
+        self._client = get_client()
 
     def add(self, load: Load) -> Load:
-        cursor = self._conn.execute(
-            """INSERT INTO loads (date, customer_id, item_class_id, quantity, price_charged)
-               VALUES (?, ?, ?, ?, ?)""",
-            (
-                load.date.isoformat(),
-                load.customer_id,
-                load.item_class_id,
-                load.quantity,
-                load.price_charged,
-            ),
-        )
-        self._conn.commit()
-        load.id = cursor.lastrowid
+        result = self._client.table("loads").insert(
+            {
+                "date": load.date.isoformat(),
+                "customer_id": load.customer_id,
+                "item_class_id": load.item_class_id,
+                "quantity": load.quantity,
+                "price_charged": load.price_charged,
+            }
+        ).execute()
+        row = result.data[0]
+        load.id = row["id"]
         return load
 
     def list_between(self, start: date, end: date) -> List[Load]:
-        rows = self._conn.execute(
-            """SELECT id, date, customer_id, item_class_id, quantity, price_charged
-               FROM loads WHERE date BETWEEN ? AND ?""",
-            (start.isoformat(), end.isoformat()),
-        ).fetchall()
+        result = (
+            self._client.table("loads")
+            .select("*")
+            .gte("date", start.isoformat())
+            .lte("date", end.isoformat())
+            .execute()
+        )
         return [
             Load(
-                id=row[0],
-                date=datetime.strptime(row[1], "%Y-%m-%d").date(),
-                customer_id=row[2],
-                item_class_id=row[3],
-                quantity=row[4],
-                price_charged=row[5],
+                id=row["id"],
+                date=datetime.strptime(row["date"], "%Y-%m-%d").date(),
+                customer_id=row["customer_id"],
+                item_class_id=row["item_class_id"],
+                quantity=row["quantity"],
+                price_charged=row["price_charged"],
             )
-            for row in rows
+            for row in result.data
         ]
