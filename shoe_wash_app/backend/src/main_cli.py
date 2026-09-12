@@ -1,5 +1,5 @@
 from domain import ItemClass
-from application import RecordLoad, RecordExpense, GetPeriodTotals
+from application import RecordLoad, RecordExpense, GetPeriodTotals, UpdateLoadStatus, MarkLoadPaid
 from infrastructure import (
     SupabaseCustomerRepository,
     SupabaseItemClassRepository,
@@ -33,8 +33,10 @@ def main():
     record_load = RecordLoad(load_repo, item_class_repo)
     record_expense = RecordExpense(expense_repo)
     get_period_totals = GetPeriodTotals(load_repo, expense_repo)
+    update_load_status = UpdateLoadStatus(load_repo)
+    mark_load_paid = MarkLoadPaid(load_repo)
 
-    cli = Cli(record_load, record_expense, get_period_totals, customer_repo, item_class_repo)
+    cli = Cli(record_load, record_expense, get_period_totals,update_load_status, mark_load_paid, customer_repo, item_class_repo)
     cli.run()
 
 

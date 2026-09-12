@@ -12,11 +12,14 @@ create table item_classes (
 
 create table loads (
     id bigint generated always as identity primary key,
-    date date not null,
+    dropped_off_at timestamptz not null,
     customer_id bigint not null references customers(id),
     item_class_id bigint not null references item_classes(id),
     quantity integer not null,
-    price_charged numeric not null
+    price_charged numeric not null,
+    status text not null default 'dropped_off',
+    expected_pickup_date date,
+    payment_status text not null default 'owing'
 );
 
 create table expenses (

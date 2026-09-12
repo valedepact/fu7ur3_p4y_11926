@@ -1,23 +1,23 @@
 from datetime import date, timedelta
 
-from domain import Customer, ExpenseCategory
+from domain import Customer, ExpenseCategory, LoadStatus
 
 
 class Cli:
-    """A simple text menu for running the shoe washing app day to day.
-    Only talks to use cases and repositories -- never to SQLite directly."""
-
     def __init__(self, record_load, record_expense, get_period_totals,
-                 customer_repo, item_class_repo):
+                 update_load_status, mark_load_paid, customer_repo, item_class_repo):
         self._record_load = record_load
         self._record_expense = record_expense
         self._get_period_totals = get_period_totals
+        self._update_load_status = update_load_status
+        self._mark_load_paid = mark_load_paid
         self._customer_repo = customer_repo
         self._item_class_repo = item_class_repo
 
     def run(self):
         while True:
-            print("\n1. Log a load  2. Log an expense  3. View totals  4. Exit")
+            print("\n1. Log a load  2. Log an expense  3. View totals  "
+                  "4. Update load status  5. Mark load paid  6. Exit")
             choice = input("Choose: ").strip()
 
             if choice == "1":
@@ -27,6 +27,10 @@ class Cli:
             elif choice == "3":
                 self._view_totals()
             elif choice == "4":
+                self._update_status()
+            elif choice == "5":
+                self._mark_paid()
+            elif choice == "6":
                 break
             else:
                 print("Not a valid option.")
@@ -41,14 +45,17 @@ class Cli:
         quantity = int(input("Quantity: "))
         price_input = input("Price charged (blank for default): ").strip()
         price = float(price_input) if price_input else None
+        pickup_input = input("Expected pickup date YYYY-MM-DD (blank if unknown): ").strip()
+        pickup = date.fromisoformat(pickup_input) if pickup_input else None
 
         load = self._record_load.execute(
             customer_id=customer.id,
             item_class_id=item_class_id,
             quantity=quantity,
             price_charged=price,
+            expected_pickup_date=pickup,
         )
-        print(f"Logged load #{load.id}: {quantity} item(s), {load.total} total.")
+        print(f"Logged load #{load.id}: {quantity} item(s), {load.total} total, status={load.status}")
 
     def _log_expense(self):
         print(
@@ -84,3 +91,16 @@ class Cli:
         print(f"\nSales: {totals.sales}")
         print(f"Expenses: {totals.expenses}")
         print(f"Balance: {totals.balance}")
+
+    def _update_status(self):
+        load_id = int(input("Load id: "))
+        print(f"Statuses: {LoadStatus.DROPPED_OFF}, {LoadStatus.WASHING}, "
+              f"{LoadStatus.READY}, {LoadStatus.PICKED_UP}")
+        new_status = input("New status: ").strip()
+        load = self._update_load_status.execute(load_id, new_status)
+        print(f"Load #{load.id} is now {load.status}")
+
+    def _mark_paid(self):
+        load_id = int(input("Load id: "))
+        load = self._mark_load_paid.execute(load_id)
+        print(f"Load #{load.id} marked {load.payment_status}")

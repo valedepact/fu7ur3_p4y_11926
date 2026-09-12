@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from typing import Optional
 
 from domain import Load
@@ -6,12 +6,6 @@ from .interfaces import LoadRepository, ItemClassRepository
 
 
 class RecordLoad:
-    """Use case: log a new washing job.
-
-    Depends only on the repository interfaces, never on SQLite directly --
-    so infrastructure can change without this file changing.
-    """
-
     def __init__(self, load_repo: LoadRepository, item_class_repo: ItemClassRepository):
         self._load_repo = load_repo
         self._item_class_repo = item_class_repo
@@ -22,7 +16,8 @@ class RecordLoad:
         item_class_id: int,
         quantity: int,
         price_charged: Optional[float] = None,
-        on_date: Optional[date] = None,
+        expected_pickup_date: Optional[date] = None,
+        dropped_off_at: Optional[datetime] = None,
     ) -> Load:
         item_class = self._item_class_repo.get(item_class_id)
         if item_class is None:
@@ -30,10 +25,11 @@ class RecordLoad:
 
         load = Load(
             id=None,
-            date=on_date or date.today(),
+            dropped_off_at=dropped_off_at or datetime.now(),
             customer_id=customer_id,
             item_class_id=item_class_id,
             quantity=quantity,
             price_charged=price_charged if price_charged is not None else item_class.base_price,
+            expected_pickup_date=expected_pickup_date,
         )
         return self._load_repo.add(load)
