@@ -9,3 +9,4 @@ class Customer:
     id: Optional[int]
     name: str
     phone: Optional[str] = None
+    credit_limit: Optional[float] = None  # None = no cap on how much they can owe
