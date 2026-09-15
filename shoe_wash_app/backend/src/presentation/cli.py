@@ -48,15 +48,18 @@ class Cli:
         pickup_input = input("Expected pickup date YYYY-MM-DD (blank if unknown): ").strip()
         pickup = date.fromisoformat(pickup_input) if pickup_input else None
 
-        load = self._record_load.execute(
+        result = self._record_load.execute(
             customer_id=customer.id,
             item_class_id=item_class_id,
             quantity=quantity,
             price_charged=price,
             expected_pickup_date=pickup,
         )
+        load = result.load
         print(f"Logged load #{load.id}: {quantity} item(s), {load.total} total, status={load.status}")
-
+        for warning in result.warnings:
+            print(f"WARNING: {warning}")
+            
     def _log_expense(self):
         print(
             f"Categories: {ExpenseCategory.SUPPLIES}, {ExpenseCategory.UTILITIES}, "
