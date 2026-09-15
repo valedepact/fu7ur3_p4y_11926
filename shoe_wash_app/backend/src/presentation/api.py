@@ -7,15 +7,18 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from domain import Customer, ItemClass
-from application import RecordLoad, RecordExpense, GetPeriodTotals
+from application import (
+    RecordLoad, RecordExpense, GetPeriodTotals, UpdateLoadStatus, MarkLoadPaid,
+    RecordPayment, GetProfitability, GetDailyCapacity, GetAbandonedLoads,
+    GetOutstandingBalance, GetCustomerBalance, GetPeakHours, GetItemClassPopularity,
+)
 from infrastructure import (
     SupabaseCustomerRepository,
     SupabaseItemClassRepository,
     SupabaseLoadRepository,
     SupabaseExpenseRepository,
+    SupabaseBusinessSettingsRepository,
 )
-from application import RecordLoad, RecordExpense, GetPeriodTotals, UpdateLoadStatus, MarkLoadPaid
-
 
 app = FastAPI(title="Shoe Wash API")
 
@@ -32,7 +35,17 @@ item_class_repo = SupabaseItemClassRepository()
 load_repo = SupabaseLoadRepository()
 expense_repo = SupabaseExpenseRepository()
 
-record_load = RecordLoad(load_repo, item_class_repo)
+settings_repo = SupabaseBusinessSettingsRepository()
+
+record_load = RecordLoad(load_repo, item_class_repo, customer_repo, settings_repo)
+record_payment = RecordPayment(load_repo)
+get_profitability = GetProfitability(load_repo)
+get_daily_capacity = GetDailyCapacity(load_repo, item_class_repo, settings_repo)
+get_abandoned_loads = GetAbandonedLoads(load_repo, settings_repo)
+get_outstanding_balance = GetOutstandingBalance(load_repo)
+get_customer_balance = GetCustomerBalance(load_repo)
+get_peak_hours = GetPeakHours(load_repo)
+get_item_class_popularity = GetItemClassPopularity(load_repo)
 record_expense = RecordExpense(expense_repo)
 get_period_totals = GetPeriodTotals(load_repo, expense_repo)
 
@@ -67,16 +80,16 @@ def list_item_classes():
 def create_load(payload: LoadCreate):
     customer = customer_repo.add(Customer(id=None, name=payload.customer_name))
     try:
-        load = record_load.execute(
+        result = record_load.execute(
             customer_id=customer.id,
             item_class_id=payload.item_class_id,
             quantity=payload.quantity,
             price_charged=payload.price_charged,
+            expected_pickup_date=payload.expected_pickup_date,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    return asdict(load)
-
+    return {"load": asdict(result.load), "warnings": result.warnings}
 
 @app.post("/expenses")
 def create_expense(payload: ExpenseCreate):
@@ -150,9 +163,80 @@ def list_expenses(start: date, end: date):
 class ItemClassCreate(BaseModel):
     name: str
     base_price: float
+    unit_cost: float = 0.0
+    wash_minutes: int = 30
 
 
 @app.post("/item-classes")
 def create_item_class(payload: ItemClassCreate):
-    item_class = item_class_repo.add(ItemClass(id=None, name=payload.name, base_price=payload.base_price))
+    item_class = item_class_repo.add(ItemClass(
+        id=None, name=payload.name, base_price=payload.base_price,
+        unit_cost=payload.unit_cost, wash_minutes=payload.wash_minutes,
+    ))
     return asdict(item_class)
+
+
+class PaymentCreate(BaseModel):
+    amount: float
+
+
+@app.post("/loads/{load_id}/payments")
+def record_payment(load_id: int, payload: PaymentCreate):
+    try:
+        load = record_payment.execute(load_id, payload.amount)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    return asdict(load)
+
+
+@app.get("/reports/profitability")
+def profitability(start: date, end: date):
+    return asdict(get_profitability.execute(start, end))
+
+
+@app.get("/reports/capacity")
+def capacity(on_date: date):
+    result = get_daily_capacity.execute(on_date)
+    return {"used_minutes": result.used_minutes, "total_minutes": result.total_minutes,
+            "remaining_minutes": result.remaining_minutes}
+
+@app.get("/reports/abandoned")
+def abandoned():
+    return [asdict(l) for l in get_abandoned_loads.execute()]
+
+
+@app.get("/reports/outstanding-balance")
+def outstanding_balance():
+    return {"total_owed": get_outstanding_balance.execute()}
+
+
+@app.get("/customers/{customer_id}/balance")
+def customer_balance(customer_id: int):
+    return {"customer_id": customer_id, "owed": get_customer_balance.execute(customer_id)}
+
+
+@app.get("/reports/peak-hours")
+def peak_hours(start: date, end: date):
+    return get_peak_hours.execute(start, end)
+
+
+@app.get("/reports/popular-items")
+def popular_items(start: date, end: date):
+    return [asdict(e) for e in get_item_class_popularity.execute(start, end)]
+
+
+class SettingsUpdate(BaseModel):
+    daily_operating_minutes: int
+    abandonment_days: int
+
+
+@app.get("/settings")
+def get_settings():
+    return asdict(settings_repo.get())
+
+
+@app.put("/settings")
+def update_settings(payload: SettingsUpdate):
+    from domain import BusinessSettings
+    settings = settings_repo.update(BusinessSettings(**payload.dict()))
+    return asdict(settings)
