@@ -1,3 +1,4 @@
+import sqlite3
 from typing import List, Optional
 
 from domain import Customer
@@ -11,7 +12,7 @@ class SupabaseCustomerRepository(CustomerRepository):
 
     def add(self, customer: Customer) -> Customer:
         result = self._client.table("customers").insert(
-            {"name": customer.name, "phone": customer.phone}
+            {"name": customer.name, "phone": customer.phone, "credit_limit": customer.credit_limit}
         ).execute()
         row = result.data[0]
         customer.id = row["id"]
@@ -22,8 +23,8 @@ class SupabaseCustomerRepository(CustomerRepository):
         if not result.data:
             return None
         row = result.data[0]
-        return Customer(id=row["id"], name=row["name"], phone=row["phone"])
+        return Customer(id=row["id"], name=row["name"], phone=row["phone"], credit_limit=row["credit_limit"])
 
     def list_all(self) -> List[Customer]:
-        result = self._client.table("customers").select("*").execute()
-        return [Customer(id=row["id"], name=row["name"], phone=row["phone"]) for row in result.data]
+        rows = self._client.table("customers").select("*").execute().data
+        return [Customer(id=r["id"], name=r["name"], phone=r["phone"], credit_limit=r["credit_limit"]) for r in rows]

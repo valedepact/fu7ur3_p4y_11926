@@ -14,6 +14,8 @@ def _row_to_load(row: dict) -> Load:
         item_class_id=row["item_class_id"],
         quantity=row["quantity"],
         price_charged=row["price_charged"],
+        unit_cost=row["unit_cost"],
+        amount_paid=row["amount_paid"],
         status=row["status"],
         expected_pickup_date=(
             datetime.strptime(row["expected_pickup_date"], "%Y-%m-%d").date()
@@ -35,6 +37,8 @@ class SupabaseLoadRepository(LoadRepository):
                 "item_class_id": load.item_class_id,
                 "quantity": load.quantity,
                 "price_charged": load.price_charged,
+                "unit_cost": load.unit_cost,
+                "amount_paid": load.amount_paid,
                 "status": load.status,
                 "expected_pickup_date": (
                     load.expected_pickup_date.isoformat() if load.expected_pickup_date else None
@@ -57,6 +61,7 @@ class SupabaseLoadRepository(LoadRepository):
             {
                 "status": load.status,
                 "payment_status": load.payment_status,
+                "amount_paid": load.amount_paid,
                 "expected_pickup_date": (
                     load.expected_pickup_date.isoformat() if load.expected_pickup_date else None
                 ),

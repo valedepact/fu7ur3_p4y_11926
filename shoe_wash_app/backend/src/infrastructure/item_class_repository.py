@@ -1,3 +1,4 @@
+import sqlite3
 from typing import List, Optional
 
 from domain import ItemClass
@@ -11,7 +12,12 @@ class SupabaseItemClassRepository(ItemClassRepository):
 
     def add(self, item_class: ItemClass) -> ItemClass:
         result = self._client.table("item_classes").insert(
-            {"name": item_class.name, "base_price": item_class.base_price}
+            {
+                "name": item_class.name,
+                "base_price": item_class.base_price,
+                "unit_cost": item_class.unit_cost,
+                "wash_minutes": item_class.wash_minutes,
+            }
         ).execute()
         row = result.data[0]
         item_class.id = row["id"]
@@ -22,8 +28,17 @@ class SupabaseItemClassRepository(ItemClassRepository):
         if not result.data:
             return None
         row = result.data[0]
-        return ItemClass(id=row["id"], name=row["name"], base_price=row["base_price"])
+        return ItemClass(
+            id=row["id"], name=row["name"], base_price=row["base_price"],
+            unit_cost=row["unit_cost"], wash_minutes=row["wash_minutes"],
+        )
 
     def list_all(self) -> List[ItemClass]:
-        result = self._client.table("item_classes").select("*").execute()
-        return [ItemClass(id=row["id"], name=row["name"], base_price=row["base_price"]) for row in result.data]
+        rows = self._client.table("item_classes").select("*").execute().data
+        return [
+            ItemClass(
+                id=row["id"], name=row["name"], base_price=row["base_price"],
+                unit_cost=row["unit_cost"], wash_minutes=row["wash_minutes"],
+            )
+            for row in rows
+        ]
