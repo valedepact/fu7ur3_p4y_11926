@@ -22,7 +22,7 @@ export default function ItemClasses() {
 
   return (
     <div>
-      <h1>Item classes</h1>
+      <h1>Services</h1>
       {error && <p className="error">{error}</p>}
       <table>
         <thead><tr><th>Name</th><th>Base price</th></tr></thead>
@@ -31,11 +31,11 @@ export default function ItemClasses() {
         </tbody>
       </table>
 
-      <h2>Add item class</h2>
+      <h2>Add a service</h2>
       <form onSubmit={handleSubmit}>
-        <input name="name" placeholder="Name (e.g. boots)" required />
+        <input name="name" placeholder="Service name (e.g. boots)" required />
         <input name="base_price" type="number" step="0.01" placeholder="Base price" required />
-        <button type="submit">Add</button>
+        <button type="submit">Add service</button>
       </form>
     </div>
   );

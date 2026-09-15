@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { dataService as api } from "../offline/dataService";
 import { usePeriod } from "../hooks/usePeriod";
+import { STATUS_LABELS } from "../labels";
 import PeriodTabs from "../components/PeriodTabs";
 
 const STATUSES = ["dropped_off", "washing", "ready", "picked_up"];
@@ -48,7 +49,7 @@ export default function Loads() {
 
   return (
     <div>
-      <h1>Loads</h1>
+      <h1>Sales</h1>
       {error && <p className="error">{error}</p>}
       <PeriodTabs period={period} setPeriod={setPeriod} customRange={customRange} setCustomRange={setCustomRange} />
 
@@ -61,7 +62,7 @@ export default function Loads() {
 
       <table>
         <thead>
-          <tr><th>Customer</th><th>Item</th><th>Qty</th><th>Total</th><th>Pickup by</th><th>Status</th><th>Payment</th></tr>
+          <tr><th>Customer</th><th>Service</th><th>Qty</th><th>Total</th><th>Pickup by</th><th>Status</th><th>Payment</th></tr>
         </thead>
         <tbody>
           {visibleLoads.map((load) => (
@@ -74,7 +75,7 @@ export default function Loads() {
               <td>
                 <select value={load.status}
                         onChange={(e) => api.updateLoadStatus(load.id, e.target.value).then(refresh)}>
-                  {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                  {STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
                 </select>
               </td>
               <td>
@@ -87,7 +88,7 @@ export default function Loads() {
         </tbody>
       </table>
 
-      <h2>Log a load</h2>
+      <h2>Record a sale</h2>
       <form onSubmit={handleSubmit}>
         <input name="customer_name" placeholder="Customer name" required />
         <select name="item_class_id" required>
@@ -96,7 +97,7 @@ export default function Loads() {
         <input name="quantity" type="number" min="1" placeholder="Quantity" required />
         <input name="price_charged" type="number" step="0.01" placeholder="Price (optional)" />
         <input name="expected_pickup_date" type="date" />
-        <button type="submit">Log load</button>
+        <button type="submit">Record Sale</button>
       </form>
     </div>
   );
