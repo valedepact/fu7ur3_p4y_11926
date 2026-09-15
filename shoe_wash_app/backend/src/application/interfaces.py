@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from datetime import date
 from typing import List, Optional
 
-from domain import Customer, ItemClass, Load, Expense
+from domain import Customer, ItemClass, Load, Expense, BusinessSettings
 
 
 class CustomerRepository(ABC):
@@ -47,3 +47,10 @@ class ExpenseRepository(ABC):
 
     @abstractmethod
     def list_between(self, start: date, end: date) -> List[Expense]: ...
+
+class BusinessSettingsRepository(ABC):
+    @abstractmethod
+    def get(self) -> BusinessSettings: ...
+
+    @abstractmethod
+    def update(self, settings: BusinessSettings) -> BusinessSettings: ...

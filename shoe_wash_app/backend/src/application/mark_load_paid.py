@@ -3,7 +3,7 @@ from .interfaces import LoadRepository
 
 
 class MarkLoadPaid:
-    """Use case: record that a load has been paid for."""
+    """Use case: record that a load has been paid in full."""
 
     def __init__(self, load_repo: LoadRepository):
         self._load_repo = load_repo
@@ -12,5 +12,6 @@ class MarkLoadPaid:
         load = self._load_repo.get(load_id)
         if load is None:
             raise ValueError(f"No load with id {load_id}")
+        load.amount_paid = load.total
         load.payment_status = PaymentStatus.PAID
         return self._load_repo.update(load)
