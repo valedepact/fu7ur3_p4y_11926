@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { dataService as api } from "../offline/dataService";
 import { usePeriod } from "../hooks/usePeriod";
 import PeriodTabs from "../components/PeriodTabs";
+import { CATEGORY_LABELS } from "../labels";
 
 const CATEGORIES = ["supplies", "utilities", "machine_upkeep", "other"];
 
@@ -52,7 +53,7 @@ export default function Expenses() {
       <h2>Log an expense</h2>
       <form onSubmit={handleSubmit}>
         <select name="category" required>
-          {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+          {CATEGORIES.map((c) => <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>)}
         </select>
         <input name="amount" type="number" step="0.01" placeholder="Amount" required />
         <input name="note" placeholder="Note (optional)" />
