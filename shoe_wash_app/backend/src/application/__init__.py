@@ -14,6 +14,11 @@ from .get_abandoned_loads import GetAbandonedLoads
 from .get_outstanding_balance import GetOutstandingBalance
 from .get_customer_balance import GetCustomerBalance
 from .get_reports import GetPeakHours, GetItemClassPopularity, ItemClassPopularity
+from .interfaces import PickupRequestRepository
+from .create_pickup_request import CreatePickupRequest
+from .confirm_pickup_request import ConfirmPickupRequest
+from .cancel_pickup_request import CancelPickupRequest
+from .collect_pickup_request import CollectPickupRequest
 
 __all__ = [
     "CustomerRepository", "ItemClassRepository", "LoadRepository", "ExpenseRepository", "BusinessSettingsRepository",
@@ -21,5 +26,6 @@ __all__ = [
     "UpdateLoadStatus", "MarkLoadPaid", "RecordPayment",
     "GetProfitability", "Profitability", "GetDailyCapacity", "DailyCapacity",
     "GetAbandonedLoads", "GetOutstandingBalance", "GetCustomerBalance",
-    "GetPeakHours", "GetItemClassPopularity", "ItemClassPopularity",
+    "GetPeakHours", "GetItemClassPopularity", "ItemClassPopularity","PickupRequestRepository",
+    "CreatePickupRequest","ConfirmPickupRequest","CancelPickupRequest","CollectPickupRequest"
 ]

@@ -3,9 +3,9 @@ from typing import Dict, List, Optional
 
 import pytest
 
-from domain import Customer, ItemClass, Load, Expense, BusinessSettings
+from domain import Customer, ItemClass, Load, Expense, BusinessSettings, PickupRequest
 from application import (
-    CustomerRepository, ItemClassRepository, LoadRepository, ExpenseRepository, BusinessSettingsRepository,
+    CustomerRepository, ItemClassRepository, LoadRepository, ExpenseRepository, BusinessSettingsRepository,PickupRequestRepository,
 )
 
 
@@ -127,3 +127,29 @@ def sneakers(item_class_repo):
 @pytest.fixture
 def customer(customer_repo):
     return customer_repo.add(Customer(id=None, name="Test Customer"))
+
+class FakePickupRequestRepository(PickupRequestRepository):
+    def __init__(self):
+        self._items: Dict[int, PickupRequest] = {}
+        self._next_id = 1
+
+    def add(self, request: PickupRequest) -> PickupRequest:
+        request.id = self._next_id
+        self._items[request.id] = request
+        self._next_id += 1
+        return request
+
+    def get(self, request_id: int) -> Optional[PickupRequest]:
+        return self._items.get(request_id)
+
+    def update(self, request: PickupRequest) -> PickupRequest:
+        self._items[request.id] = request
+        return request
+
+    def list_by_status(self, status: str) -> List[PickupRequest]:
+        return [r for r in self._items.values() if r.status == status]
+
+
+@pytest.fixture
+def pickup_request_repo():
+    return FakePickupRequestRepository()

@@ -33,6 +33,9 @@ class RecordLoad:
         price_charged: Optional[float] = None,
         expected_pickup_date: Optional[date] = None,
         dropped_off_at: Optional[datetime] = None,
+        delivery_method: str = "walk_in",
+        pickup_address: Optional[str] = None,
+        delivery_address: Optional[str] = None,
     ) -> RecordLoadResult:
         item_class = self._item_class_repo.get(item_class_id)
         if item_class is None:
@@ -49,6 +52,9 @@ class RecordLoad:
             price_charged=price_charged if price_charged is not None else item_class.base_price,
             unit_cost=item_class.unit_cost,
             expected_pickup_date=expected_pickup_date,
+            delivery_method=delivery_method,
+            pickup_address=pickup_address,
+            delivery_address=delivery_address,
         )
         load = self._load_repo.add(load)
 

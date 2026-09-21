@@ -25,18 +25,17 @@ def main():
     item_class_repo = SupabaseItemClassRepository()
     load_repo = SupabaseLoadRepository()
     expense_repo = SupabaseExpenseRepository()
+    settings_repo = SupabaseBusinessSettingsRepository()
 
     seed_item_classes(item_class_repo)
 
-    record_load = RecordLoad(load_repo, item_class_repo)
+    record_load = RecordLoad(load_repo, item_class_repo, customer_repo, settings_repo)
     record_expense = RecordExpense(expense_repo)
     get_period_totals = GetPeriodTotals(load_repo, expense_repo)
     update_load_status = UpdateLoadStatus(load_repo)
     mark_load_paid = MarkLoadPaid(load_repo)
-    settings_repo = SupabaseBusinessSettingsRepository()
-    record_load = RecordLoad(load_repo, item_class_repo, customer_repo, settings_repo)
 
-    cli = Cli(record_load, record_expense, get_period_totals,update_load_status, mark_load_paid, customer_repo, item_class_repo)
+    cli = Cli(record_load, record_expense, get_period_totals, update_load_status, mark_load_paid, customer_repo, item_class_repo)
     cli.run()
 
 

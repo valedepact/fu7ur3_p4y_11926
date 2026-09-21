@@ -6,11 +6,12 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from domain import Customer, ItemClass
+from domain import Customer, ItemClass, PickupRequest
 from application import (
     RecordLoad, RecordExpense, GetPeriodTotals, UpdateLoadStatus, MarkLoadPaid,
     RecordPayment, GetProfitability, GetDailyCapacity, GetAbandonedLoads,
     GetOutstandingBalance, GetCustomerBalance, GetPeakHours, GetItemClassPopularity,
+    CreatePickupRequest, ConfirmPickupRequest, CancelPickupRequest, CollectPickupRequest,
 )
 from infrastructure import (
     SupabaseCustomerRepository,
@@ -18,6 +19,7 @@ from infrastructure import (
     SupabaseLoadRepository,
     SupabaseExpenseRepository,
     SupabaseBusinessSettingsRepository,
+    SupabasePickupRequestRepository,
 )
 
 app = FastAPI(title="Shoe Wash API")
@@ -48,6 +50,12 @@ get_peak_hours = GetPeakHours(load_repo)
 get_item_class_popularity = GetItemClassPopularity(load_repo)
 record_expense = RecordExpense(expense_repo)
 get_period_totals = GetPeriodTotals(load_repo, expense_repo)
+
+pickup_request_repo = SupabasePickupRequestRepository()
+create_pickup_request = CreatePickupRequest(pickup_request_repo)
+confirm_pickup_request = ConfirmPickupRequest(pickup_request_repo)
+cancel_pickup_request = CancelPickupRequest(pickup_request_repo)
+collect_pickup_request = CollectPickupRequest(pickup_request_repo, customer_repo, record_load)
 
 update_load_status = UpdateLoadStatus(load_repo)
 mark_load_paid = MarkLoadPaid(load_repo)
@@ -240,3 +248,64 @@ def update_settings(payload: SettingsUpdate):
     from domain import BusinessSettings
     settings = settings_repo.update(BusinessSettings(**payload.dict()))
     return asdict(settings)
+
+class PickupRequestCreate(BaseModel):
+    customer_name: str
+    phone: str
+    address: str
+    notes: Optional[str] = None
+
+
+@app.post("/pickup-requests")
+def request_pickup(payload: PickupRequestCreate):
+    request = create_pickup_request.execute(
+        customer_name=payload.customer_name, phone=payload.phone,
+        address=payload.address, notes=payload.notes,
+    )
+    return asdict(request)
+
+
+@app.get("/pickup-requests")
+def list_pickup_requests(status: str = "requested"):
+    return [asdict(r) for r in pickup_request_repo.list_by_status(status)]
+
+
+class PickupConfirm(BaseModel):
+    scheduled_date: date
+
+
+@app.patch("/pickup-requests/{request_id}/confirm")
+def confirm_pickup(request_id: int, payload: PickupConfirm):
+    try:
+        request = confirm_pickup_request.execute(request_id, payload.scheduled_date)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    return asdict(request)
+
+
+class PickupCollect(BaseModel):
+    item_class_id: int
+    quantity: int
+    price_charged: Optional[float] = None
+    expected_pickup_date: Optional[date] = None
+
+
+@app.patch("/pickup-requests/{request_id}/collect")
+def collect_pickup(request_id: int, payload: PickupCollect):
+    try:
+        result = collect_pickup_request.execute(
+            request_id, payload.item_class_id, payload.quantity,
+            payload.price_charged, payload.expected_pickup_date,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    return {"load": asdict(result.load), "warnings": result.warnings}
+
+
+@app.patch("/pickup-requests/{request_id}/cancel")
+def cancel_pickup(request_id: int):
+    try:
+        request = cancel_pickup_request.execute(request_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    return asdict(request)

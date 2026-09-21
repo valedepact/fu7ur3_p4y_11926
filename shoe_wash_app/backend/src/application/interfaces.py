@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from datetime import date
 from typing import List, Optional
 
-from domain import Customer, ItemClass, Load, Expense, BusinessSettings
+from domain import Customer, ItemClass, Load, Expense, BusinessSettings, PickupRequest
 
 
 class CustomerRepository(ABC):
@@ -54,3 +54,16 @@ class BusinessSettingsRepository(ABC):
 
     @abstractmethod
     def update(self, settings: BusinessSettings) -> BusinessSettings: ...
+
+class PickupRequestRepository(ABC):
+    @abstractmethod
+    def add(self, request: PickupRequest) -> PickupRequest: ...
+
+    @abstractmethod
+    def get(self, request_id: int) -> Optional[PickupRequest]: ...
+
+    @abstractmethod
+    def update(self, request: PickupRequest) -> PickupRequest: ...
+
+    @abstractmethod
+    def list_by_status(self, status: str) -> List[PickupRequest]: ...

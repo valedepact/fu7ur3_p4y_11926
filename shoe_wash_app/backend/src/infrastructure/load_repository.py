@@ -22,6 +22,9 @@ def _row_to_load(row: dict) -> Load:
             if row["expected_pickup_date"] else None
         ),
         payment_status=row["payment_status"],
+        delivery_method=row["delivery_method"],
+        pickup_address=row["pickup_address"],
+        delivery_address=row["delivery_address"],
     )
 
 
@@ -44,6 +47,9 @@ class SupabaseLoadRepository(LoadRepository):
                     load.expected_pickup_date.isoformat() if load.expected_pickup_date else None
                 ),
                 "payment_status": load.payment_status,
+                "delivery_method": load.delivery_method,
+                "pickup_address": load.pickup_address,
+                "delivery_address": load.delivery_address,
             }
         ).execute()
         row = result.data[0]

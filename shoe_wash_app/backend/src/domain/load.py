@@ -8,6 +8,7 @@ class LoadStatus:
     WASHING = "washing"
     READY = "ready"
     PICKED_UP = "picked_up"
+    DELIVERED = "   delivered"
     ABANDONED = "abandoned"
 
 
@@ -15,6 +16,10 @@ class PaymentStatus:
     PAID = "paid"
     PARTIAL = "partial"
     OWING = "owing"
+
+class DeliveryMethod:
+    WALK_IN = "walk_in"
+    PICKUP_DELIVERY = "pickup_delivery"
 
 
 @dataclass
@@ -29,6 +34,9 @@ class Load:
     price_charged: float
     unit_cost: float = 0.0
     amount_paid: float = 0.0
+    delivery_method: str = DeliveryMethod.WALK_IN
+    pickup_address: Optional[str] = None
+    delivery_address: Optional[str] = None
     status: str = LoadStatus.DROPPED_OFF
     expected_pickup_date: Optional[date] = None
     payment_status: str = PaymentStatus.OWING

@@ -40,3 +40,21 @@ create table business_settings (
     daily_operating_minutes integer not null default 600,
     abandonment_days integer not null default 14
 );
+
+
+alter table loads
+    add column delivery_method text not null default 'walk_in',
+    add column pickup_address text,
+    add column delivery_address text;
+
+create table pickup_requests (
+    id bigint generated always as identity primary key,
+    customer_name text not null,
+    phone text not null,
+    address text not null,
+    requested_at timestamptz not null,
+    status text not null default 'requested',
+    scheduled_date date,
+    notes text,
+    collected_load_id bigint references loads(id)
+);
