@@ -6,7 +6,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from domain import Customer, ItemClass, PickupRequest
+from domain import BusinessSettings, Customer, ItemClass
 from application import (
     RecordLoad, RecordExpense, GetPeriodTotals, UpdateLoadStatus, MarkLoadPaid,
     RecordPayment, GetProfitability, GetDailyCapacity, GetAbandonedLoads,
@@ -36,10 +36,14 @@ customer_repo = SupabaseCustomerRepository()
 item_class_repo = SupabaseItemClassRepository()
 load_repo = SupabaseLoadRepository()
 expense_repo = SupabaseExpenseRepository()
-
 settings_repo = SupabaseBusinessSettingsRepository()
+pickup_request_repo = SupabasePickupRequestRepository()
 
 record_load = RecordLoad(load_repo, item_class_repo, customer_repo, settings_repo)
+record_expense = RecordExpense(expense_repo)
+get_period_totals = GetPeriodTotals(load_repo, expense_repo)
+update_load_status = UpdateLoadStatus(load_repo)
+mark_load_paid = MarkLoadPaid(load_repo)
 record_payment = RecordPayment(load_repo)
 get_profitability = GetProfitability(load_repo)
 get_daily_capacity = GetDailyCapacity(load_repo, item_class_repo, settings_repo)
@@ -48,30 +52,64 @@ get_outstanding_balance = GetOutstandingBalance(load_repo)
 get_customer_balance = GetCustomerBalance(load_repo)
 get_peak_hours = GetPeakHours(load_repo)
 get_item_class_popularity = GetItemClassPopularity(load_repo)
-record_expense = RecordExpense(expense_repo)
-get_period_totals = GetPeriodTotals(load_repo, expense_repo)
 
-pickup_request_repo = SupabasePickupRequestRepository()
 create_pickup_request = CreatePickupRequest(pickup_request_repo)
 confirm_pickup_request = ConfirmPickupRequest(pickup_request_repo)
 cancel_pickup_request = CancelPickupRequest(pickup_request_repo)
 collect_pickup_request = CollectPickupRequest(pickup_request_repo, customer_repo, record_load)
 
-update_load_status = UpdateLoadStatus(load_repo)
-mark_load_paid = MarkLoadPaid(load_repo)
-
 
 class LoadCreate(BaseModel):
     customer_name: str
+    customer_phone: Optional[str] = None
     item_class_id: int
     quantity: int
     price_charged: Optional[float] = None
+    expected_pickup_date: Optional[date] = None
 
 
 class ExpenseCreate(BaseModel):
     category: str
     amount: float
     note: Optional[str] = None
+
+
+class StatusUpdate(BaseModel):
+    status: str
+
+
+class ItemClassCreate(BaseModel):
+    name: str
+    base_price: float
+    unit_cost: float = 0.0
+    wash_minutes: int = 30
+
+
+class PaymentCreate(BaseModel):
+    amount: float
+
+
+class SettingsUpdate(BaseModel):
+    daily_operating_minutes: int
+    abandonment_days: int
+
+
+class PickupRequestCreate(BaseModel):
+    customer_name: str
+    phone: str
+    address: str
+    notes: Optional[str] = None
+
+
+class PickupConfirm(BaseModel):
+    scheduled_date: date
+
+
+class PickupCollect(BaseModel):
+    item_class_id: int
+    quantity: int
+    price_charged: Optional[float] = None
+    expected_pickup_date: Optional[date] = None
 
 
 @app.get("/customers")
@@ -86,7 +124,7 @@ def list_item_classes():
 
 @app.post("/loads")
 def create_load(payload: LoadCreate):
-    customer = customer_repo.add(Customer(id=None, name=payload.customer_name))
+    customer = customer_repo.add(Customer(id=None, name=payload.customer_name, phone=payload.customer_phone))
     try:
         result = record_load.execute(
             customer_id=customer.id,
@@ -99,47 +137,10 @@ def create_load(payload: LoadCreate):
         raise HTTPException(status_code=400, detail=str(e))
     return {"load": asdict(result.load), "warnings": result.warnings}
 
-@app.post("/expenses")
-def create_expense(payload: ExpenseCreate):
-    expense = record_expense.execute(
-        category=payload.category,
-        amount=payload.amount,
-        note=payload.note,
-    )
-    return asdict(expense)
 
-
-@app.get("/totals")
-def totals(start: date, end: date):
-    result = get_period_totals.execute(start, end)
-    return asdict(result)
-
-class LoadCreate(BaseModel):
-    customer_name: str
-    item_class_id: int
-    quantity: int
-    price_charged: Optional[float] = None
-    expected_pickup_date: Optional[date] = None
-
-
-class StatusUpdate(BaseModel):
-    status: str
-
-
-@app.post("/loads")
-def create_load(payload: LoadCreate):
-    customer = customer_repo.add(Customer(id=None, name=payload.customer_name))
-    try:
-        load = record_load.execute(
-            customer_id=customer.id,
-            item_class_id=payload.item_class_id,
-            quantity=payload.quantity,
-            price_charged=payload.price_charged,
-            expected_pickup_date=payload.expected_pickup_date,
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    return asdict(load)
+@app.get("/loads")
+def list_loads(start: date, end: date):
+    return [asdict(l) for l in load_repo.list_between(start, end)]
 
 
 @app.patch("/loads/{load_id}/status")
@@ -159,20 +160,35 @@ def mark_paid(load_id: int):
         raise HTTPException(status_code=404, detail=str(e))
     return asdict(load)
 
-@app.get("/loads")
-def list_loads(start: date, end: date):
-    return [asdict(l) for l in load_repo.list_between(start, end)]
+
+@app.post("/loads/{load_id}/payments")
+def record_payment_endpoint(load_id: int, payload: PaymentCreate):
+    try:
+        load = record_payment.execute(load_id, payload.amount)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    return asdict(load)
+
+
+@app.post("/expenses")
+def create_expense(payload: ExpenseCreate):
+    expense = record_expense.execute(
+        category=payload.category,
+        amount=payload.amount,
+        note=payload.note,
+    )
+    return asdict(expense)
+
 
 @app.get("/expenses")
 def list_expenses(start: date, end: date):
     return [asdict(e) for e in expense_repo.list_between(start, end)]
 
 
-class ItemClassCreate(BaseModel):
-    name: str
-    base_price: float
-    unit_cost: float = 0.0
-    wash_minutes: int = 30
+@app.get("/totals")
+def totals(start: date, end: date):
+    result = get_period_totals.execute(start, end)
+    return asdict(result)
 
 
 @app.post("/item-classes")
@@ -184,19 +200,6 @@ def create_item_class(payload: ItemClassCreate):
     return asdict(item_class)
 
 
-class PaymentCreate(BaseModel):
-    amount: float
-
-
-@app.post("/loads/{load_id}/payments")
-def record_payment(load_id: int, payload: PaymentCreate):
-    try:
-        load = record_payment.execute(load_id, payload.amount)
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    return asdict(load)
-
-
 @app.get("/reports/profitability")
 def profitability(start: date, end: date):
     return asdict(get_profitability.execute(start, end))
@@ -205,8 +208,12 @@ def profitability(start: date, end: date):
 @app.get("/reports/capacity")
 def capacity(on_date: date):
     result = get_daily_capacity.execute(on_date)
-    return {"used_minutes": result.used_minutes, "total_minutes": result.total_minutes,
-            "remaining_minutes": result.remaining_minutes}
+    return {
+        "used_minutes": result.used_minutes,
+        "total_minutes": result.total_minutes,
+        "remaining_minutes": result.remaining_minutes,
+    }
+
 
 @app.get("/reports/abandoned")
 def abandoned():
@@ -233,11 +240,6 @@ def popular_items(start: date, end: date):
     return [asdict(e) for e in get_item_class_popularity.execute(start, end)]
 
 
-class SettingsUpdate(BaseModel):
-    daily_operating_minutes: int
-    abandonment_days: int
-
-
 @app.get("/settings")
 def get_settings():
     return asdict(settings_repo.get())
@@ -245,15 +247,8 @@ def get_settings():
 
 @app.put("/settings")
 def update_settings(payload: SettingsUpdate):
-    from domain import BusinessSettings
     settings = settings_repo.update(BusinessSettings(**payload.dict()))
     return asdict(settings)
-
-class PickupRequestCreate(BaseModel):
-    customer_name: str
-    phone: str
-    address: str
-    notes: Optional[str] = None
 
 
 @app.post("/pickup-requests")
@@ -270,10 +265,6 @@ def list_pickup_requests(status: str = "requested"):
     return [asdict(r) for r in pickup_request_repo.list_by_status(status)]
 
 
-class PickupConfirm(BaseModel):
-    scheduled_date: date
-
-
 @app.patch("/pickup-requests/{request_id}/confirm")
 def confirm_pickup(request_id: int, payload: PickupConfirm):
     try:
@@ -281,13 +272,6 @@ def confirm_pickup(request_id: int, payload: PickupConfirm):
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     return asdict(request)
-
-
-class PickupCollect(BaseModel):
-    item_class_id: int
-    quantity: int
-    price_charged: Optional[float] = None
-    expected_pickup_date: Optional[date] = None
 
 
 @app.patch("/pickup-requests/{request_id}/collect")

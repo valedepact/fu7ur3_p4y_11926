@@ -8,7 +8,7 @@ class LoadStatus:
     WASHING = "washing"
     READY = "ready"
     PICKED_UP = "picked_up"
-    DELIVERED = "   delivered"
+    DELIVERED = "delivered"
     ABANDONED = "abandoned"
 
 

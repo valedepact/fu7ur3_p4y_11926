@@ -1,16 +1,16 @@
 create table customers (
     id bigint generated always as identity primary key,
     name text not null,
-    phone text
-    add column credit_limit numeric;
+    phone text,
+    credit_limit numeric
 );
 
 create table item_classes (
     id bigint generated always as identity primary key,
     name text not null unique,
-    base_price numeric not null
-    add column unit_cost numeric not null default 0,
-    add column wash_minutes integer not null default 30;
+    base_price numeric not null,
+    unit_cost numeric not null default 0,
+    wash_minutes integer not null default 30
 );
 
 create table loads (
@@ -20,11 +20,14 @@ create table loads (
     item_class_id bigint not null references item_classes(id),
     quantity integer not null,
     price_charged numeric not null,
+    unit_cost numeric not null default 0,
+    amount_paid numeric not null default 0,
     status text not null default 'dropped_off',
     expected_pickup_date date,
-    payment_status text not null default 'owing'
-    add column unit_cost numeric not null default 0,
-    add column amount_paid numeric not null default 0;
+    payment_status text not null default 'owing',
+    delivery_method text not null default 'walk_in',
+    pickup_address text,
+    delivery_address text
 );
 
 create table expenses (
@@ -41,11 +44,8 @@ create table business_settings (
     abandonment_days integer not null default 14
 );
 
-
-alter table loads
-    add column delivery_method text not null default 'walk_in',
-    add column pickup_address text,
-    add column delivery_address text;
+insert into business_settings (id, daily_operating_minutes, abandonment_days)
+values (1, 600, 14);
 
 create table pickup_requests (
     id bigint generated always as identity primary key,

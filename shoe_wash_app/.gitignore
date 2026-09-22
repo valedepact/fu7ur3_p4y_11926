@@ -1,0 +1,42 @@
+# Secrets -- never commit these
+.env
+.env.local
+**/.env
+
+# Python (backend)
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+venv/
+.venv/
+*.egg-info/
+*.db
+*.sqlite3
+
+# Node / React (web_dashboard)
+node_modules/
+dist/
+.vite/
+*.local
+
+# Flutter (mobile_app)
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+**/android/.gradle/
+**/android/app/debug/
+**/android/app/profile/
+**/android/app/release/
+**/ios/Pods/
+**/ios/.symlinks/
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Flutter.podspec
+
+# Editor / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
