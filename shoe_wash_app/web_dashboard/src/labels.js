@@ -18,3 +18,18 @@ export const CATEGORY_LABELS = {
   machine_upkeep: "Machine upkeep",
   other: "Other",
 };
+
+export const STATUS_BADGE_CLASS = {
+  dropped_off: "badge-info",
+  washing: "badge-warning",
+  ready: "badge-info-strong",
+  picked_up: "badge-success",
+  delivered: "badge-success",
+  abandoned: "badge-danger",
+};
+
+export const PAYMENT_BADGE_CLASS = {
+  paid: "badge-success",
+  partial: "badge-warning",
+  owing: "badge-danger",
+};

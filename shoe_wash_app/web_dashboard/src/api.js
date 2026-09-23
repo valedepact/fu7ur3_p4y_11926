@@ -31,4 +31,24 @@ export const api = {
     getExpenses: (start, end) => request(`/expenses?start=${start}&end=${end}`),
   createItemClass: (payload) =>
     request("/item-classes", { method: "POST", body: JSON.stringify(payload) }),
+    createCustomer: (payload) =>
+    request("/customers", { method: "POST", body: JSON.stringify(payload) }),
+  getOutstandingBalance: () => request("/reports/outstanding-balance"),
+  getProfitability: (start, end) => request(`/reports/profitability?start=${start}&end=${end}`),
+  getPeakHours: (start, end) => request(`/reports/peak-hours?start=${start}&end=${end}`),
+  getPopularItems: (start, end) => request(`/reports/popular-items?start=${start}&end=${end}`),
+  getAbandonedLoads: () => request("/reports/abandoned"),
+  getPickupRequests: (status) => request(`/pickup-requests?status=${status}`),
+  confirmPickupRequest: (id, scheduled_date) =>
+    request(`/pickup-requests/${id}/confirm`, { method: "PATCH", body: JSON.stringify({ scheduled_date }) }),
+  collectPickupRequest: (id, payload) =>
+    request(`/pickup-requests/${id}/collect`, { method: "PATCH", body: JSON.stringify(payload) }),
+  cancelPickupRequest: (id) => request(`/pickup-requests/${id}/cancel`, { method: "PATCH" }),
+  requestPickup: (payload) =>
+    request("/pickup-requests", { method: "POST", body: JSON.stringify(payload) }),
+  getSettings: () => request("/settings"),
+  updateSettings: (payload) =>
+    request("/settings", { method: "PUT", body: JSON.stringify(payload) }),
+  recordPayment: (loadId, amount) =>
+    request(`/loads/${loadId}/payments`, { method: "POST", body: JSON.stringify({ amount }) }),
 };

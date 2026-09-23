@@ -1,28 +1,28 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useEffect } from "react";
-import { startSyncListener } from "./offline/sync";
-import Nav from "./components/Nav";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import DashboardLayout from "./components/DashboardLayout";
 import Overview from "./pages/Overview";
 import Loads from "./pages/Loads";
 import Expenses from "./pages/Expenses";
 import Customers from "./pages/Customers";
 import ItemClasses from "./pages/ItemClasses";
+import { startSyncListener } from "./offline/sync";
 import "./App.css";
 
 export default function App() {
   useEffect(() => { startSyncListener(); }, []);
+
   return (
     <BrowserRouter>
-      <div className="dashboard">
-        <Nav />
-        <Routes>
+      <Routes>
+        <Route element={<DashboardLayout />}>
           <Route path="/" element={<Overview />} />
           <Route path="/loads" element={<Loads />} />
           <Route path="/expenses" element={<Expenses />} />
           <Route path="/customers" element={<Customers />} />
           <Route path="/item-classes" element={<ItemClasses />} />
-        </Routes>
-      </div>
+        </Route>
+      </Routes>
     </BrowserRouter>
   );
 }
