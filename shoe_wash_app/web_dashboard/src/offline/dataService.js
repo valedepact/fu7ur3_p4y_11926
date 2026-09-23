@@ -1,10 +1,10 @@
-import { api } from "../api";
+import { api as backendApi } from "../api";
 import { saveCache, readCache, queueAction } from "./db";
 
 export const dataService = {
   async getCustomers() {
     try {
-      const data = await api.getCustomers();
+      const data = await backendApi.getCustomers();
       await saveCache("customers", data);
       return data;
     } catch { return readCache("customers"); }
@@ -12,7 +12,7 @@ export const dataService = {
 
   async getItemClasses() {
     try {
-      const data = await api.getItemClasses();
+      const data = await backendApi.getItemClasses();
       await saveCache("item_classes", data);
       return data;
     } catch { return readCache("item_classes"); }
@@ -21,7 +21,7 @@ export const dataService = {
   async getLoads(start, end) {
     const key = `loads_${start}_${end}`;
     try {
-      const data = await api.getLoads(start, end);
+      const data = await backendApi.getLoads(start, end);
       await saveCache(key, data);
       return data;
     } catch { return readCache(key); }
@@ -30,7 +30,7 @@ export const dataService = {
   async getExpenses(start, end) {
     const key = `expenses_${start}_${end}`;
     try {
-      const data = await api.getExpenses(start, end);
+      const data = await backendApi.getExpenses(start, end);
       await saveCache(key, data);
       return data;
     } catch { return readCache(key); }
@@ -38,7 +38,7 @@ export const dataService = {
 
   async getTotals(start, end) {
     try {
-      return await api.getTotals(start, end);
+      return await backendApi.getTotals(start, end);
     } catch {
       const loads = await readCache(`loads_${start}_${end}`);
       const expenses = await readCache(`expenses_${start}_${end}`);
@@ -49,27 +49,41 @@ export const dataService = {
   },
 
   async createLoad(payload) {
-    try { return await api.createLoad(payload); }
+    try { return await backendApi.createLoad(payload); }
     catch { await queueAction("createLoad", payload); return null; }
   },
 
   async createExpense(payload) {
-    try { return await api.createExpense(payload); }
+    try { return await backendApi.createExpense(payload); }
     catch { await queueAction("createExpense", payload); return null; }
   },
 
   async updateLoadStatus(loadId, status) {
-    try { return await api.updateLoadStatus(loadId, status); }
+    try { return await backendApi.updateLoadStatus(loadId, status); }
     catch { await queueAction("updateLoadStatus", { load_id: loadId, status }); return null; }
   },
 
   async markLoadPaid(loadId) {
-    try { return await api.markLoadPaid(loadId); }
+    try { return await backendApi.markLoadPaid(loadId); }
     catch { await queueAction("markLoadPaid", { load_id: loadId }); return null; }
   },
 
   async createItemClass(payload) {
-    try { return await api.createItemClass(payload); }
+    try { return await backendApi.createItemClass(payload); }
     catch { await queueAction("createItemClass", payload); return null; }
   },
+
+  getOutstandingBalance() {
+    return backendApi.getOutstandingBalance();
+  },
+
+  updateItemClass(id, payload) {
+    return backendApi.updateItemClass(id, payload);
+  },
+
+  deleteItemClass(id) {
+    return backendApi.deleteItemClass(id);
+  },
 };
+
+export const api = dataService;
