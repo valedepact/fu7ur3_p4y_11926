@@ -51,4 +51,10 @@ export const api = {
     request("/settings", { method: "PUT", body: JSON.stringify(payload) }),
   recordPayment: (loadId, amount) =>
     request(`/loads/${loadId}/payments`, { method: "POST", body: JSON.stringify({ amount }) }),
+    updateCustomer: (id, payload) =>
+    request(`/customers/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
+  updateItemClass: (id, payload) =>
+    request(`/item-classes/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
+  deleteItemClass: (id) =>
+    request(`/item-classes/${id}`, { method: "DELETE" }),
 };
