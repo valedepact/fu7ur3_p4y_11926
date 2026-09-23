@@ -171,3 +171,30 @@ form input, form select { font-family: inherit; font-size: 0.9rem; padding: 0.55
   .sidebar-logo { display: none; }
   .sidebar-nav { flex-direction: row; }
 }
+
+.toolbar { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; margin-bottom: 1rem; }
+.toolbar input[type="text"] {
+  flex: 1 1 240px; font-family: inherit; font-size: 0.9rem;
+  padding: 0.55rem 0.9rem; border: 1px solid var(--border); border-radius: 8px; background: var(--surface);
+}
+.toolbar select {
+  font-family: inherit; font-size: 0.85rem; padding: 0.55rem 0.8rem;
+  border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--ink-soft);
+}
+
+.panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+.panel-header h1 { margin: 0; }
+
+.pagination { display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; font-size: 0.85rem; color: var(--ink-soft); }
+.pagination .pages { display: flex; gap: 4px; }
+.pagination button {
+  font-family: inherit; font-size: 0.85rem; width: 30px; height: 30px;
+  border: 1px solid var(--border); background: var(--surface); border-radius: 6px; cursor: pointer; color: var(--ink-soft);
+}
+.pagination button.active { background: var(--primary); border-color: var(--primary); color: white; }
+.pagination button:disabled { opacity: 0.4; cursor: default; }
+
+select.badge {
+  border: none; appearance: none; -webkit-appearance: none;
+  font-family: inherit; font-weight: 500; cursor: pointer; padding-right: 1.4rem;
+}

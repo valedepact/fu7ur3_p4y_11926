@@ -33,3 +33,8 @@ export const PAYMENT_BADGE_CLASS = {
   partial: "badge-warning",
   owing: "badge-danger",
 };
+
+export const DELIVERY_LABELS = {
+  walk_in: "Pickup",
+  pickup_delivery: "Delivery",
+};
