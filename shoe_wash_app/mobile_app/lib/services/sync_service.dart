@@ -27,7 +27,7 @@ class SyncService {
           await _replay(action, payload);
           LocalStore.removePendingAction(entry.key);
         } catch (_) {
-          break; // still offline or server rejected -- stop, try again next time
+          break;
         }
       }
     } finally {
@@ -38,20 +38,18 @@ class SyncService {
   Future<void> _replay(String action, Map<String, dynamic> payload) async {
     switch (action) {
       case 'createLoad':
+        final itemsJson = (payload['items'] as List).cast<Map<String, dynamic>>();
         await _api.createLoad(
           customerName: payload['customer_name'],
-          itemClassId: payload['item_class_id'],
-          quantity: payload['quantity'],
-          priceCharged: payload['price_charged']?.toDouble(),
+          customerPhone: payload['customer_phone'],
+          items: itemsJson.map((i) => LoadItemInput(
+            itemClassId: i['item_class_id'], quantity: i['quantity'], priceCharged: (i['price_charged'] as num?)?.toDouble(),
+          )).toList(),
           expectedPickupDate: payload['expected_pickup_date'],
         );
         break;
       case 'createExpense':
-        await _api.createExpense(
-          category: payload['category'],
-          amount: (payload['amount'] as num).toDouble(),
-          note: payload['note'],
-        );
+        await _api.createExpense(category: payload['category'], amount: (payload['amount'] as num).toDouble(), note: payload['note']);
         break;
       case 'updateLoadStatus':
         await _api.updateLoadStatus(payload['load_id'], payload['status']);
@@ -59,8 +57,8 @@ class SyncService {
       case 'markLoadPaid':
         await _api.markLoadPaid(payload['load_id']);
         break;
-      case 'createItemClass':
-        await _api.createItemClass(payload['name'], (payload['base_price'] as num).toDouble());
+      case 'recordPayment':
+        await _api.recordPayment(payload['load_id'], (payload['amount'] as num).toDouble());
         break;
     }
   }

@@ -2,26 +2,27 @@ import 'package:flutter/material.dart';
 
 import '../services/data_service.dart';
 import '../models/load.dart';
-import '../models/item_class.dart';
 import '../models/customer.dart';
-import '../utils/period.dart';
-import '../widgets/period_tabs.dart';
+import '../models/item_class.dart';
+import '../utils/labels.dart';
+import '../theme.dart';
+import 'load_detail_screen.dart';
 
-const _statuses = ['dropped_off', 'washing', 'ready', 'picked_up'];
+const _statuses = ['dropped_off', 'washing', 'ready', 'picked_up', 'delivered'];
 
 class LoadsScreen extends StatefulWidget {
-  const LoadsScreen({super.key});
-
+  final DataService dataService;
+  const LoadsScreen({super.key, required this.dataService});
   @override
   State<LoadsScreen> createState() => _LoadsScreenState();
 }
 
 class _LoadsScreenState extends State<LoadsScreen> {
-  final _api = DataService();
-  String _period = 'week';
   List<Load> _loads = [];
-  List<ItemClass> _itemClasses = [];
   List<Customer> _customers = [];
+  List<ItemClass> _itemClasses = [];
+  String _search = '';
+  String _statusFilter = 'all';
   String? _error;
 
   @override
@@ -31,128 +32,90 @@ class _LoadsScreenState extends State<LoadsScreen> {
   }
 
   Future<void> _refresh() async {
-    final range = rangeForPeriod(_period);
+    final end = DateTime.now();
+    final start = end.subtract(const Duration(days: 30));
+    String iso(DateTime d) => d.toIso8601String().split('T')[0];
     try {
-      final loads = await _api.getLoads(range.startIso, range.endIso);
-      final itemClasses = await _api.getItemClasses();
-      final customers = await _api.getCustomers();
-      setState(() { _loads = loads; _itemClasses = itemClasses; _customers = customers; _error = null; });
+      final loads = await widget.dataService.getLoads(iso(start), iso(end));
+      final customers = await widget.dataService.getCustomers();
+      final itemClasses = await widget.dataService.getItemClasses();
+      setState(() { _loads = loads; _customers = customers; _itemClasses = itemClasses; _error = null; });
     } catch (e) {
       setState(() => _error = e.toString());
     }
   }
 
-  String _itemClassName(int id) =>
-      _itemClasses.firstWhere((c) => c.id == id, orElse: () => ItemClass(id: id, name: '#$id', basePrice: 0)).name;
+  String _customerName(int id) => _customers.firstWhere((c) => c.id == id, orElse: () => Customer(id: id, name: '#$id')).name;
+  String _customerPhone(int id) => _customers.firstWhere((c) => c.id == id, orElse: () => Customer(id: id, name: '')).phone ?? '';
 
-  String _customerName(int id) =>
-      _customers.firstWhere((c) => c.id == id, orElse: () => Customer(id: id, name: '#$id')).name;
-
-  void _showLogLoadSheet() {
-    final customerController = TextEditingController();
-    final quantityController = TextEditingController();
-    final priceController = TextEditingController();
-    int? itemClassId = _itemClasses.isNotEmpty ? _itemClasses.first.id : null;
-    DateTime? pickupDate;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) {
-        return StatefulBuilder(builder: (context, setSheetState) {
-          return Padding(
-            padding: EdgeInsets.only(left: 16, right: 16, top: 16,
-                bottom: MediaQuery.of(context).viewInsets.bottom + 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Text('Log a load', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 12),
-                TextField(controller: customerController, decoration: const InputDecoration(labelText: 'Customer name')),
-                DropdownButtonFormField<int>(
-                  value: itemClassId,
-                  decoration: const InputDecoration(labelText: 'Item class'),
-                  items: _itemClasses.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))).toList(),
-                  onChanged: (v) => setSheetState(() => itemClassId = v),
-                ),
-                TextField(controller: quantityController, decoration: const InputDecoration(labelText: 'Quantity'), keyboardType: TextInputType.number),
-                TextField(controller: priceController, decoration: const InputDecoration(labelText: 'Price (optional)'), keyboardType: TextInputType.number),
-                const SizedBox(height: 8),
-                OutlinedButton(
-                  onPressed: () async {
-                    final picked = await showDatePicker(
-                      context: context, initialDate: DateTime.now(),
-                      firstDate: DateTime.now(), lastDate: DateTime.now().add(const Duration(days: 60)),
-                    );
-                    if (picked != null) setSheetState(() => pickupDate = picked);
-                  },
-                  child: Text(pickupDate == null ? 'Expected pickup date' : pickupDate.toString().split(' ')[0]),
-                ),
-                const SizedBox(height: 16),
-                FilledButton(
-                  onPressed: () async {
-                    if (customerController.text.isEmpty || itemClassId == null || quantityController.text.isEmpty) return;
-                    await _api.createLoad(
-                      customerName: customerController.text,
-                      itemClassId: itemClassId!,
-                      quantity: int.parse(quantityController.text),
-                      priceCharged: priceController.text.isNotEmpty ? double.parse(priceController.text) : null,
-                      expectedPickupDate: pickupDate != null ? pickupDate!.toIso8601String().split('T')[0] : null,
-                    );
-                    if (context.mounted) Navigator.pop(context);
-                    _refresh();
-                  },
-                  child: const Text('Log load'),
-                ),
-              ],
-            ),
-          );
-        });
-      },
-    );
-  }
+  String _itemSummary(Load l) => l.items.map((it) =>
+      '${it.quantity}x ${_itemClasses.firstWhere((c) => c.id == it.itemClassId, orElse: () => ItemClass(id: it.itemClassId, name: '#${it.itemClassId}', basePrice: 0)).name}'
+  ).join(', ');
 
   @override
   Widget build(BuildContext context) {
+    final visible = _loads.where((l) {
+      final q = _search.toLowerCase();
+      final matchesSearch = q.isEmpty || _customerName(l.customerId).toLowerCase().contains(q) || _customerPhone(l.customerId).toLowerCase().contains(q);
+      final matchesStatus = _statusFilter == 'all' || l.status == _statusFilter;
+      return matchesSearch && matchesStatus;
+    }).toList()..sort((a, b) => b.droppedOffAt.compareTo(a.droppedOffAt));
+
     return Scaffold(
       appBar: AppBar(title: const Text('Loads')),
-      floatingActionButton: FloatingActionButton(onPressed: _showLogLoadSheet, child: const Icon(Icons.add)),
       body: RefreshIndicator(
         onRefresh: _refresh,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            if (_error != null) Text(_error!, style: const TextStyle(color: Colors.red)),
-            PeriodTabs(period: _period, onChanged: (p) { setState(() => _period = p); _refresh(); }),
-            const SizedBox(height: 12),
-            ..._loads.map((load) => Card(
-              child: ListTile(
-                title: Text('${_customerName(load.customerId)} — ${_itemClassName(load.itemClassId)} x${load.quantity}'),
-                subtitle: Text('Total: ${load.total.toStringAsFixed(0)}  •  Pickup: ${load.expectedPickupDate ?? '--'}'),
-                trailing: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    DropdownButton<String>(
-                      value: load.status,
-                      items: _statuses.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
-                      onChanged: (s) async { if (s == null) return; await _api.updateLoadStatus(load.id, s); _refresh(); },
-                    ),
-                    if (load.paymentStatus == 'owing')
-                      TextButton(
-                        onPressed: () async { await _api.markLoadPaid(load.id); _refresh(); },
-                        child: const Text('Mark paid'),
-                      )
-                    else
-                      const Text('paid'),
-                  ],
-                ),
-              ),
-            )),
-          ],
-        ),
+        child: Column(children: [
+          Padding(padding: const EdgeInsets.all(12), child: TextField(
+            decoration: const InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'Search by name or phone...', border: OutlineInputBorder(), isDense: true),
+            onChanged: (v) => setState(() => _search = v),
+          )),
+          SizedBox(height: 40, child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 12), children: [
+            _FilterChip(label: 'All', selected: _statusFilter == 'all', onTap: () => setState(() => _statusFilter = 'all')),
+            ..._statuses.map((s) => _FilterChip(label: statusLabels[s] ?? s, selected: _statusFilter == s, onTap: () => setState(() => _statusFilter = s))),
+          ])),
+          const SizedBox(height: 8),
+          if (_error != null) Text(_error!, style: const TextStyle(color: AppColors.danger)),
+          Expanded(child: ListView.builder(
+            itemCount: visible.length,
+            itemBuilder: (context, i) {
+              final load = visible[i];
+              return Card(margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4), child: ListTile(
+                title: Text(_customerName(load.customerId)),
+                subtitle: Text('${_customerPhone(load.customerId)}\n${_itemSummary(load)}'),
+                isThreeLine: true,
+                trailing: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.end, children: [
+                  _Badge(text: statusLabels[load.status] ?? load.status, color: statusColor(load.status), bg: statusBg(load.status)),
+                  const SizedBox(height: 4),
+                  _Badge(text: paymentLabels[load.paymentStatus] ?? load.paymentStatus, color: paymentColor(load.paymentStatus), bg: paymentBg(load.paymentStatus)),
+                ]),
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => LoadDetailScreen(dataService: widget.dataService, load: load))).then((_) => _refresh()),
+              ));
+            },
+          )),
+        ]),
       ),
     );
   }
+}
+
+class _FilterChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  const _FilterChip({required this.label, required this.selected, required this.onTap});
+  @override
+  Widget build(BuildContext context) => Padding(padding: const EdgeInsets.only(right: 8), child: ChoiceChip(label: Text(label), selected: selected, onSelected: (_) => onTap()));
+}
+
+class _Badge extends StatelessWidget {
+  final String text;
+  final Color color, bg;
+  const _Badge({required this.text, required this.color, required this.bg});
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+    decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(999)),
+    child: Text(text, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600)),
+  );
 }

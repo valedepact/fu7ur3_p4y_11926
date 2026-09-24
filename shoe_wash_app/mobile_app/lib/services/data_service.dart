@@ -6,6 +6,7 @@ import '../models/item_class.dart';
 import '../models/load.dart';
 import '../models/expense.dart';
 import '../models/totals.dart';
+import '../models/pickup_request.dart';
 
 class DataService {
   final ApiService _api = ApiService();
@@ -23,10 +24,14 @@ class DataService {
     }
   }
 
+  Future<Customer> createCustomer(String name, String? phone) => _api.createCustomer(name, phone);
+
   Future<List<ItemClass>> getItemClasses() async {
     try {
       final data = await _api.getItemClasses();
-      LocalStore.saveCache('item_classes', data.map((c) => {'id': c.id, 'name': c.name, 'base_price': c.basePrice}).toList());
+      LocalStore.saveCache('item_classes', data.map((c) => {
+        'id': c.id, 'name': c.name, 'base_price': c.basePrice, 'unit_cost': c.unitCost, 'wash_minutes': c.washMinutes,
+      }).toList());
       return data;
     } catch (_) {
       return LocalStore.readCache('item_classes').map((j) => ItemClass.fromJson(j)).toList();
@@ -68,21 +73,14 @@ class DataService {
   }
 
   Future<void> createLoad({
-    required String customerName,
-    required int itemClassId,
-    required int quantity,
-    double? priceCharged,
-    String? expectedPickupDate,
+    required String customerName, String? customerPhone, required List<LoadItemInput> items, String? expectedPickupDate,
   }) async {
     final payload = {
-      'customer_name': customerName, 'item_class_id': itemClassId, 'quantity': quantity,
-      'price_charged': priceCharged, 'expected_pickup_date': expectedPickupDate,
+      'customer_name': customerName, 'customer_phone': customerPhone,
+      'items': items.map((i) => i.toJson()).toList(), 'expected_pickup_date': expectedPickupDate,
     };
     try {
-      await _api.createLoad(
-        customerName: customerName, itemClassId: itemClassId, quantity: quantity,
-        priceCharged: priceCharged, expectedPickupDate: expectedPickupDate,
-      );
+      await _api.createLoad(customerName: customerName, customerPhone: customerPhone, items: items, expectedPickupDate: expectedPickupDate);
     } catch (_) {
       LocalStore.queueAction('createLoad', payload);
     }
@@ -112,20 +110,33 @@ class DataService {
     }
   }
 
-  Future<void> createItemClass(String name, double basePrice) async {
+  Future<void> recordPayment(int loadId, double amount) async {
     try {
-      await _api.createItemClass(name, basePrice);
+      await _api.recordPayment(loadId, amount);
     } catch (_) {
-      LocalStore.queueAction('createItemClass', {'name': name, 'base_price': basePrice});
+      LocalStore.queueAction('recordPayment', {'load_id': loadId, 'amount': amount});
     }
   }
 
+  // Pickup requests: online-only for now, no offline queueing -- these are
+  // lower-frequency, office-side actions rather than out-in-the-field ones.
+  Future<List<PickupRequest>> getPickupRequests(String status) => _api.getPickupRequests(status);
+  Future<PickupRequest> confirmPickupRequest(int id, String scheduledDate) => _api.confirmPickupRequest(id, scheduledDate);
+  Future<Map<String, dynamic>> collectPickupRequest(int id, List<LoadItemInput> items, String? expectedPickupDate) =>
+      _api.collectPickupRequest(id, items, expectedPickupDate);
+  Future<void> cancelPickupRequest(int id) => _api.cancelPickupRequest(id);
+
+  Future<Map<String, dynamic>> getSettings() => _api.getSettings();
+  Future<Map<String, dynamic>> updateSettings(Map<String, dynamic> payload) => _api.updateSettings(payload);
+
   Map<String, dynamic> _loadToJson(Load l) => {
-    'id': l.id, 'dropped_off_at': l.droppedOffAt, 'customer_id': l.customerId, 'item_class_id': l.itemClassId,
-    'quantity': l.quantity, 'price_charged': l.priceCharged, 'status': l.status,
-    'expected_pickup_date': l.expectedPickupDate, 'payment_status': l.paymentStatus,
+    'id': l.id, 'dropped_off_at': l.droppedOffAt, 'customer_id': l.customerId,
+    'items': l.items.map((it) => {
+      'id': it.id, 'item_class_id': it.itemClassId, 'quantity': it.quantity, 'price_charged': it.priceCharged, 'unit_cost': it.unitCost,
+    }).toList(),
+    'amount_paid': l.amountPaid, 'status': l.status, 'expected_pickup_date': l.expectedPickupDate, 'payment_status': l.paymentStatus,
+    'delivery_method': l.deliveryMethod, 'pickup_address': l.pickupAddress, 'delivery_address': l.deliveryAddress,
   };
 
-  Map<String, dynamic> _expenseToJson(Expense e) =>
-      {'id': e.id, 'date': e.date, 'category': e.category, 'amount': e.amount, 'note': e.note};
+  Map<String, dynamic> _expenseToJson(Expense e) => {'id': e.id, 'date': e.date, 'category': e.category, 'amount': e.amount, 'note': e.note};
 }
