@@ -17,10 +17,6 @@ create table loads (
     id bigint generated always as identity primary key,
     dropped_off_at timestamptz not null,
     customer_id bigint not null references customers(id),
-    item_class_id bigint not null references item_classes(id),
-    quantity integer not null,
-    price_charged numeric not null,
-    unit_cost numeric not null default 0,
     amount_paid numeric not null default 0,
     status text not null default 'dropped_off',
     expected_pickup_date date,
@@ -28,6 +24,15 @@ create table loads (
     delivery_method text not null default 'walk_in',
     pickup_address text,
     delivery_address text
+);
+
+create table load_items (
+    id bigint generated always as identity primary key,
+    load_id bigint not null references loads(id) on delete cascade,
+    item_class_id bigint not null references item_classes(id),
+    quantity integer not null,
+    price_charged numeric not null,
+    unit_cost numeric not null default 0
 );
 
 create table expenses (
@@ -58,3 +63,25 @@ create table pickup_requests (
     notes text,
     collected_load_id bigint references loads(id)
 );
+
+alter table business_settings
+    add column default_credit_limit numeric not null default 50000;
+
+create table load_items (
+    id bigint generated always as identity primary key,
+    load_id bigint not null references loads(id) on delete cascade,
+    item_class_id bigint not null references item_classes(id),
+    quantity integer not null,
+    price_charged numeric not null,
+    unit_cost numeric not null default 0
+);
+
+-- migrate every existing load's single item into the new table
+insert into load_items (load_id, item_class_id, quantity, price_charged, unit_cost)
+select id, item_class_id, quantity, price_charged, unit_cost from loads;
+
+alter table loads
+    drop column item_class_id,
+    drop column quantity,
+    drop column price_charged,
+    drop column unit_cost;

@@ -57,4 +57,6 @@ export const api = {
     request(`/item-classes/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
   deleteItemClass: (id) =>
     request(`/item-classes/${id}`, { method: "DELETE" }),
+  getPickupRequestsByStatus: (status) => 
+    request(`/pickup-requests?status=${status}`),
 };

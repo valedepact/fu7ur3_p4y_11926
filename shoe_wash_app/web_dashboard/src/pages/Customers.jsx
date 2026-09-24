@@ -97,7 +97,7 @@ export default function Customers() {
         <form onSubmit={handleAddSubmit} style={{ marginBottom: "1.5rem" }}>
           <input name="name" placeholder="Customer name" required />
           <input name="phone" placeholder="Phone (optional)" />
-          <input name="credit_limit" type="number" step="0.01" placeholder="Credit limit (optional)" />
+          <input name="credit_limit" type="number" min="0" step="0.01" placeholder="Credit limit (optional)" />
           <button type="submit">Save Customer</button>
         </form>
       )}
@@ -138,7 +138,7 @@ export default function Customers() {
             <form onSubmit={handleEditSubmit}>
               <input name="name" defaultValue={selectedCustomer.name} required />
               <input name="phone" defaultValue={selectedCustomer.phone ?? ""} placeholder="Phone" />
-              <input name="credit_limit" type="number" step="0.01" defaultValue={selectedCustomer.credit_limit ?? ""} placeholder="Credit limit" />
+              <input name="credit_limit" type="number" min="0" step="0.01" defaultValue={selectedCustomer.credit_limit ?? ""} placeholder="Credit limit" />
               <button type="submit">Save Changes</button>
             </form>
           ) : (

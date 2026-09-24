@@ -39,24 +39,25 @@ class Cli:
         name = input("Customer name: ").strip()
         customer = self._customer_repo.add(Customer(id=None, name=name))
 
-        for item_class in self._item_class_repo.list_all():
-            print(f"{item_class.id}: {item_class.name} (default {item_class.base_price})")
-        item_class_id = int(input("Item class id: "))
-        quantity = int(input("Quantity: "))
-        price_input = input("Price charged (blank for default): ").strip()
-        price = float(price_input) if price_input else None
+        items = []
+        while True:
+            for item_class in self._item_class_repo.list_all():
+                print(f"{item_class.id}: {item_class.name} (default {item_class.base_price})")
+            item_class_id = int(input("Item class id: "))
+            quantity = int(input("Quantity: "))
+            price_input = input("Price charged (blank for default): ").strip()
+            price = float(price_input) if price_input else None
+            items.append(LoadItemInput(item_class_id=item_class_id, quantity=quantity, price_charged=price))
+
+            if input("Add another item to this load? (y/N): ").strip().lower() != "y":
+                break
+
         pickup_input = input("Expected pickup date YYYY-MM-DD (blank if unknown): ").strip()
         pickup = date.fromisoformat(pickup_input) if pickup_input else None
 
-        result = self._record_load.execute(
-            customer_id=customer.id,
-            item_class_id=item_class_id,
-            quantity=quantity,
-            price_charged=price,
-            expected_pickup_date=pickup,
-        )
+        result = self._record_load.execute(customer_id=customer.id, items=items, expected_pickup_date=pickup)
         load = result.load
-        print(f"Logged load #{load.id}: {quantity} item(s), {load.total} total, status={load.status}")
+        print(f"Logged load #{load.id}: {len(load.items)} item type(s), {load.total} total, status={load.status}")
         for warning in result.warnings:
             print(f"WARNING: {warning}")
             

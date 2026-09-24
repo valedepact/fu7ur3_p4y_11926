@@ -12,5 +12,5 @@ class UpdateLoadStatus:
         load = self._load_repo.get(load_id)
         if load is None:
             raise ValueError(f"No load with id {load_id}")
-        load.status = new_status
+        load.transition_to(new_status)
         return self._load_repo.update(load)

@@ -126,7 +126,7 @@ export default function Loads() {
             {itemClasses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
           <input name="quantity" type="number" min="1" placeholder="Quantity" required />
-          <input name="price_charged" type="number" step="0.01" placeholder="Price (optional)" />
+          <input name="price_charged" type="number" min="0.01" step="0.01" placeholder="Price (optional)" />
           <input name="expected_pickup_date" type="date" />
           <button type="submit">Save Load</button>
         </form>

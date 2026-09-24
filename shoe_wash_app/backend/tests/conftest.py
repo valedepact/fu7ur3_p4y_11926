@@ -23,6 +23,10 @@ class FakeCustomerRepository(CustomerRepository):
     def get(self, customer_id: int) -> Optional[Customer]:
         return self._items.get(customer_id)
 
+    def update(self, customer: Customer) -> Customer:
+        self._items[customer.id] = customer
+        return customer
+
     def list_all(self) -> List[Customer]:
         return list(self._items.values())
 
@@ -40,6 +44,13 @@ class FakeItemClassRepository(ItemClassRepository):
 
     def get(self, item_class_id: int) -> Optional[ItemClass]:
         return self._items.get(item_class_id)
+
+    def update(self, item_class: ItemClass) -> ItemClass:
+        self._items[item_class.id] = item_class
+        return item_class
+
+    def delete(self, item_class_id: int) -> None:
+        self._items.pop(item_class_id, None)
 
     def list_all(self) -> List[ItemClass]:
         return list(self._items.values())

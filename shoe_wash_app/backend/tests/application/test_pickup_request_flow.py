@@ -1,8 +1,7 @@
 from datetime import date
 
 from domain import PickupRequestStatus, DeliveryMethod
-from application import CreatePickupRequest, ConfirmPickupRequest, CancelPickupRequest, CollectPickupRequest, RecordLoad
-
+from application import CreatePickupRequest, ConfirmPickupRequest, CancelPickupRequest, CollectPickupRequest, RecordLoad, LoadItemInput
 
 def test_creating_a_request_starts_as_requested(pickup_request_repo):
     request = CreatePickupRequest(pickup_request_repo).execute(
@@ -38,7 +37,7 @@ def test_collecting_creates_a_delivery_load_and_marks_request_collected(
     record_load = RecordLoad(load_repo, item_class_repo, customer_repo, settings_repo)
     collect = CollectPickupRequest(pickup_request_repo, customer_repo, record_load)
 
-    result = collect.execute(request.id, item_class_id=sneakers.id, quantity=2)
+    result = collect.execute(request.id, items=[LoadItemInput(item_class_id=sneakers.id, quantity=2)])
 
     assert result.load.delivery_method == DeliveryMethod.PICKUP_DELIVERY
     assert result.load.pickup_address == "Plot 4, Ntinda"

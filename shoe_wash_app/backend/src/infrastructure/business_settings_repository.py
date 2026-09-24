@@ -13,6 +13,7 @@ class SupabaseBusinessSettingsRepository(BusinessSettingsRepository):
         return BusinessSettings(
             daily_operating_minutes=row["daily_operating_minutes"],
             abandonment_days=row["abandonment_days"],
+            default_credit_limit=row["default_credit_limit"],
         )
 
     def update(self, settings: BusinessSettings) -> BusinessSettings:
@@ -20,6 +21,7 @@ class SupabaseBusinessSettingsRepository(BusinessSettingsRepository):
             {
                 "daily_operating_minutes": settings.daily_operating_minutes,
                 "abandonment_days": settings.abandonment_days,
+                "default_credit_limit": settings.default_credit_limit,
             }
         ).eq("id", 1).execute()
         return settings

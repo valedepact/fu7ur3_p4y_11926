@@ -27,7 +27,7 @@ class GetDailyCapacity:
         settings = self._settings_repo.get()
         loads = self._load_repo.list_between(on_date, on_date)
         used = sum(
-            (self._item_class_repo.get(l.item_class_id).wash_minutes or 0) * l.quantity
-            for l in loads
+            (self._item_class_repo.get(item.item_class_id).wash_minutes or 0) * item.quantity
+            for l in loads for item in l.items
         )
         return DailyCapacity(used_minutes=used, total_minutes=settings.daily_operating_minutes)

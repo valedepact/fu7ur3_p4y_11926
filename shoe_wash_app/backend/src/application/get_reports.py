@@ -37,10 +37,11 @@ class GetItemClassPopularity:
         loads = self._load_repo.list_between(start, end)
         totals: Dict[int, ItemClassPopularity] = {}
         for l in loads:
-            entry = totals.setdefault(
-                l.item_class_id,
-                ItemClassPopularity(item_class_id=l.item_class_id, load_count=0, total_revenue=0),
-            )
-            entry.load_count += 1
-            entry.total_revenue += l.total
+            for item in l.items:
+                entry = totals.setdefault(
+                    item.item_class_id,
+                    ItemClassPopularity(item_class_id=item.item_class_id, load_count=0, total_revenue=0),
+                )
+                entry.load_count += 1
+                entry.total_revenue += item.total
         return sorted(totals.values(), key=lambda e: e.total_revenue, reverse=True)

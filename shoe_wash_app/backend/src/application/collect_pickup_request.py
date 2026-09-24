@@ -1,24 +1,19 @@
 from datetime import date
-from typing import Optional
+from typing import List, Optional
 
 from domain import Customer, DeliveryMethod, PickupRequestStatus
 from .interfaces import PickupRequestRepository, CustomerRepository
-from .record_load import RecordLoad, RecordLoadResult
+from .record_load import RecordLoad, RecordLoadResult, LoadItemInput
 
 
 class CollectPickupRequest:
-    """Use case: the shop has now physically collected the items --
-    turns the request into a real Load, under the same pricing/capacity/
-    credit rules as any other order."""
-
     def __init__(self, pickup_request_repo: PickupRequestRepository,
                  customer_repo: CustomerRepository, record_load: RecordLoad):
         self._repo = pickup_request_repo
         self._customer_repo = customer_repo
         self._record_load = record_load
 
-    def execute(self, request_id: int, item_class_id: int, quantity: int,
-                price_charged: Optional[float] = None,
+    def execute(self, request_id: int, items: List[LoadItemInput],
                 expected_pickup_date: Optional[date] = None) -> RecordLoadResult:
         request = self._repo.get(request_id)
         if request is None:
@@ -28,9 +23,7 @@ class CollectPickupRequest:
 
         result = self._record_load.execute(
             customer_id=customer.id,
-            item_class_id=item_class_id,
-            quantity=quantity,
-            price_charged=price_charged,
+            items=items,
             expected_pickup_date=expected_pickup_date,
             delivery_method=DeliveryMethod.PICKUP_DELIVERY,
             pickup_address=request.address,

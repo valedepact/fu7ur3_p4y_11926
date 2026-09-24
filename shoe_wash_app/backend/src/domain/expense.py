@@ -22,3 +22,7 @@ class Expense:
     category: str
     amount: float
     note: Optional[str] = None
+
+    def __post_init__(self):
+        if self.amount <= 0:
+            raise ValueError("Expense amount must be positive")

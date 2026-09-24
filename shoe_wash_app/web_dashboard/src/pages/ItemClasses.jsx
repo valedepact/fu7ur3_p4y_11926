@@ -65,9 +65,9 @@ export default function ItemClasses() {
       <h2>{editingId ? `Edit "${editingItem?.name}"` : "Add Item Class"}</h2>
       <form onSubmit={handleSubmit} key={editingId ?? "new"}>
         <input name="name" placeholder="Item class name (e.g. Boots)" defaultValue={editingItem?.name ?? ""} required />
-        <input name="base_price" type="number" step="0.01" placeholder="Base price (UGX)" defaultValue={editingItem?.base_price ?? ""} required />
-        <input name="unit_cost" type="number" step="0.01" placeholder="Unit cost (UGX)" defaultValue={editingItem?.unit_cost ?? ""} />
-        <input name="wash_minutes" type="number" placeholder="Wash minutes" defaultValue={editingItem?.wash_minutes ?? ""} />
+        <input name="base_price" type="number" min="0.01" step="0.01" placeholder="Base price (UGX)" defaultValue={editingItem?.base_price ?? ""} required />
+        <input name="unit_cost" type="number" min="0" step="0.01" placeholder="Unit cost (UGX)" defaultValue={editingItem?.unit_cost ?? ""} />
+        <input name="wash_minutes" type="number" min="1" placeholder="Wash minutes" defaultValue={editingItem?.wash_minutes ?? ""} />
         {editingId && <button type="button" className="btn-secondary" onClick={() => setEditingId(null)}>Cancel</button>}
         <button type="submit">{editingId ? "Save Changes" : "Add Item Class"}</button>
       </form>

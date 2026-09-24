@@ -1,10 +1,11 @@
 from dataclasses import asdict
 from datetime import date
-from typing import Optional
+from typing import List, Optional
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from fastapi.responses import HTMLResponse
 
 from domain import BusinessSettings, Customer, ItemClass
 from application import (
@@ -12,6 +13,7 @@ from application import (
     RecordPayment, GetProfitability, GetDailyCapacity, GetAbandonedLoads,
     GetOutstandingBalance, GetCustomerBalance, GetPeakHours, GetItemClassPopularity,
     CreatePickupRequest, ConfirmPickupRequest, CancelPickupRequest, CollectPickupRequest,
+    LoadItemInput,
 )
 from infrastructure import (
     SupabaseCustomerRepository,
@@ -22,7 +24,56 @@ from infrastructure import (
     SupabasePickupRequestRepository,
 )
 
-app = FastAPI(title="Shoe Wash API")
+app = FastAPI(title="Shoe Wash API", docs_url=None, redoc_url=None)
+
+
+@app.get("/docs", include_in_schema=False, response_class=HTMLResponse)
+def docs():
+        return """
+        <!doctype html>
+        <html lang="en">
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title>Shoe Wash API</title>
+            <style>
+                body { font: 16px system-ui, sans-serif; margin: 2rem auto; max-width: 1000px; padding: 0 1rem; color: #17202a; }
+                h1 { margin-bottom: .25rem; }
+                .muted { color: #5f6b76; }
+                .endpoint { border: 1px solid #d9e0e6; border-radius: 6px; margin: .75rem 0; padding: .85rem 1rem; }
+                .method { display: inline-block; font: 700 12px monospace; min-width: 4rem; }
+                .GET { color: #087f5b; } .POST { color: #1864ab; } .PATCH { color: #a15800; } .DELETE { color: #c92a2a; }
+                code { background: #f1f3f5; border-radius: 3px; padding: .15rem .3rem; }
+                pre { background: #f8f9fa; overflow: auto; padding: 1rem; }
+            </style>
+        </head>
+        <body>
+            <h1 id="title">Shoe Wash API</h1>
+            <p class="muted">Local API documentation</p>
+            <div id="content">Loading endpoints...</div>
+            <script>
+                const content = document.getElementById("content");
+                fetch("/openapi.json")
+                    .then((response) => {
+                        if (!response.ok) throw new Error(`OpenAPI request failed (${response.status})`);
+                        return response.json();
+                    })
+                    .then((schema) => {
+                        document.getElementById("title").textContent = schema.info.title;
+                        content.innerHTML = Object.entries(schema.paths).flatMap(([path, methods]) =>
+                            Object.entries(methods).map(([method, details]) => `
+                                <div class="endpoint">
+                                    <span class="method ${method.toUpperCase()}">${method.toUpperCase()}</span>
+                                    <code>${path}</code>
+                                    <div>${details.summary || details.description || ""}</div>
+                                </div>`)
+                        ).join("");
+                    })
+                    .catch((error) => { content.innerHTML = `<p>${error.message}</p>`; });
+            </script>
+        </body>
+        </html>
+        """
 
 # Dev-friendly for now -- tighten allow_origins once the dashboard has a real domain.
 app.add_middleware(
@@ -62,11 +113,13 @@ collect_pickup_request = CollectPickupRequest(pickup_request_repo, customer_repo
 class LoadCreate(BaseModel):
     customer_name: str
     customer_phone: Optional[str] = None
+    items: List[LoadItemCreate]
+    expected_pickup_date: Optional[date] = None
+
+class LoadItemCreate(BaseModel):
     item_class_id: int
     quantity: int
     price_charged: Optional[float] = None
-    expected_pickup_date: Optional[date] = None
-
 
 class ExpenseCreate(BaseModel):
     category: str
@@ -92,6 +145,7 @@ class PaymentCreate(BaseModel):
 class SettingsUpdate(BaseModel):
     daily_operating_minutes: int
     abandonment_days: int
+    default_credit_limit: float
 
 
 class PickupRequestCreate(BaseModel):
@@ -106,11 +160,25 @@ class PickupConfirm(BaseModel):
 
 
 class PickupCollect(BaseModel):
-    item_class_id: int
-    quantity: int
-    price_charged: Optional[float] = None
+    items: List[LoadItemCreate]
     expected_pickup_date: Optional[date] = None
 
+class CustomerCreate(BaseModel):
+    name: str
+    phone: Optional[str] = None
+    credit_limit: Optional[float] = None
+
+class CustomerUpdate(BaseModel):
+    name: Optional[str] = None
+    phone: Optional[str] = None
+    credit_limit: Optional[float] = None
+
+
+class ItemClassUpdate(BaseModel):
+    name: Optional[str] = None
+    base_price: Optional[float] = None
+    unit_cost: Optional[float] = None
+    wash_minutes: Optional[int] = None
 
 @app.get("/customers")
 def list_customers():
@@ -128,15 +196,13 @@ def create_load(payload: LoadCreate):
     try:
         result = record_load.execute(
             customer_id=customer.id,
-            item_class_id=payload.item_class_id,
-            quantity=payload.quantity,
-            price_charged=payload.price_charged,
+            items=[LoadItemInput(item_class_id=i.item_class_id, quantity=i.quantity, price_charged=i.price_charged)
+                   for i in payload.items],
             expected_pickup_date=payload.expected_pickup_date,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return {"load": asdict(result.load), "warnings": result.warnings}
-
 
 @app.get("/loads")
 def list_loads(start: date, end: date):
@@ -278,13 +344,14 @@ def confirm_pickup(request_id: int, payload: PickupConfirm):
 def collect_pickup(request_id: int, payload: PickupCollect):
     try:
         result = collect_pickup_request.execute(
-            request_id, payload.item_class_id, payload.quantity,
-            payload.price_charged, payload.expected_pickup_date,
+            request_id,
+            [LoadItemInput(item_class_id=i.item_class_id, quantity=i.quantity, price_charged=i.price_charged)
+             for i in payload.items],
+            payload.expected_pickup_date,
         )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     return {"load": asdict(result.load), "warnings": result.warnings}
-
 
 @app.patch("/pickup-requests/{request_id}/cancel")
 def cancel_pickup(request_id: int):
@@ -293,3 +360,47 @@ def cancel_pickup(request_id: int):
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     return asdict(request)
+
+
+@app.post("/customers")
+def create_customer(payload: CustomerCreate):
+    customer = customer_repo.add(Customer(
+        id=None, name=payload.name, phone=payload.phone, credit_limit=payload.credit_limit,
+    ))
+    return asdict(customer)
+
+@app.patch("/customers/{customer_id}")
+def update_customer(customer_id: int, payload: CustomerUpdate):
+    customer = customer_repo.get(customer_id)
+    if customer is None:
+        raise HTTPException(status_code=404, detail=f"No customer with id {customer_id}")
+    if payload.name is not None:
+        customer.name = payload.name
+    if payload.phone is not None:
+        customer.phone = payload.phone
+    if payload.credit_limit is not None:
+        customer.credit_limit = payload.credit_limit
+    return asdict(customer_repo.update(customer))
+
+@app.patch("/item-classes/{item_class_id}")
+def update_item_class(item_class_id: int, payload: ItemClassUpdate):
+    item_class = item_class_repo.get(item_class_id)
+    if item_class is None:
+        raise HTTPException(status_code=404, detail=f"No item class with id {item_class_id}")
+    if payload.name is not None:
+        item_class.name = payload.name
+    if payload.base_price is not None:
+        item_class.base_price = payload.base_price
+    if payload.unit_cost is not None:
+        item_class.unit_cost = payload.unit_cost
+    if payload.wash_minutes is not None:
+        item_class.wash_minutes = payload.wash_minutes
+    return asdict(item_class_repo.update(item_class))
+
+@app.delete("/item-classes/{item_class_id}")
+def delete_item_class(item_class_id: int):
+    try:
+        item_class_repo.delete(item_class_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"deleted": True}

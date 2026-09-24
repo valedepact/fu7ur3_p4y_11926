@@ -76,7 +76,7 @@ export default function Expenses() {
           <select name="category" required>
             {CATEGORIES.map((c) => <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>)}
           </select>
-          <input name="amount" type="number" step="0.01" placeholder="Amount (UGX)" required />
+          <input name="amount" type="number" min="0.01" step="0.01" placeholder="Amount (UGX)" required />
           <input name="note" placeholder="Description / Notes (optional)" />
           <button type="submit">Save Expense</button>
         </form>

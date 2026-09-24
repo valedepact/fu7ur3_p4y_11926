@@ -1,4 +1,4 @@
-from domain import Load, PaymentStatus
+from domain import Load
 from .interfaces import LoadRepository
 
 
@@ -13,12 +13,5 @@ class RecordPayment:
         if load is None:
             raise ValueError(f"No load with id {load_id}")
 
-        load.amount_paid += amount
-        if load.amount_paid >= load.total:
-            load.payment_status = PaymentStatus.PAID
-        elif load.amount_paid > 0:
-            load.payment_status = PaymentStatus.PARTIAL
-        else:
-            load.payment_status = PaymentStatus.OWING
-
+        load.apply_payment(amount)
         return self._load_repo.update(load)

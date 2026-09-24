@@ -27,3 +27,9 @@ class SupabaseCustomerRepository(CustomerRepository):
     def list_all(self) -> List[Customer]:
         rows = self._client.table("customers").select("*").execute().data
         return [Customer(id=r["id"], name=r["name"], phone=r["phone"], credit_limit=r["credit_limit"]) for r in rows]
+
+    def update(self, customer: Customer) -> Customer:
+        self._client.table("customers").update(
+            {"name": customer.name, "phone": customer.phone, "credit_limit": customer.credit_limit}
+        ).eq("id", customer.id).execute()
+        return customer

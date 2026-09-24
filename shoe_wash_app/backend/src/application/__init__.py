@@ -19,6 +19,7 @@ from .create_pickup_request import CreatePickupRequest
 from .confirm_pickup_request import ConfirmPickupRequest
 from .cancel_pickup_request import CancelPickupRequest
 from .collect_pickup_request import CollectPickupRequest
+from .record_load import RecordLoad, RecordLoadResult, LoadItemInput
 
 __all__ = [
     "CustomerRepository", "ItemClassRepository", "LoadRepository", "ExpenseRepository", "BusinessSettingsRepository",
@@ -27,5 +28,5 @@ __all__ = [
     "GetProfitability", "Profitability", "GetDailyCapacity", "DailyCapacity",
     "GetAbandonedLoads", "GetOutstandingBalance", "GetCustomerBalance",
     "GetPeakHours", "GetItemClassPopularity", "ItemClassPopularity","PickupRequestRepository",
-    "CreatePickupRequest","ConfirmPickupRequest","CancelPickupRequest","CollectPickupRequest"
+    "CreatePickupRequest","ConfirmPickupRequest","CancelPickupRequest","CollectPickupRequest","LoadItemInput"
 ]

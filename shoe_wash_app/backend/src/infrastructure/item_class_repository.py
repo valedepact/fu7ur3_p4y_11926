@@ -3,7 +3,7 @@ from typing import List, Optional
 from domain import ItemClass
 from application import ItemClassRepository
 from .supabase_client import get_client
-
+from postgrest.exceptions import APIError
 
 class SupabaseItemClassRepository(ItemClassRepository):
     def __init__(self):
@@ -41,3 +41,17 @@ class SupabaseItemClassRepository(ItemClassRepository):
             )
             for row in rows
         ]
+
+    def update(self, item_class: ItemClass) -> ItemClass:
+        self._client.table("item_classes").update(
+            {"name": item_class.name, "base_price": item_class.base_price,
+             "unit_cost": item_class.unit_cost, "wash_minutes": item_class.wash_minutes}
+        ).eq("id", item_class.id).execute()
+        return item_class
+
+    def delete(self, item_class_id: int) -> None:
+        try:
+            self._client.table("item_classes").delete().eq("id", item_class_id).execute()
+        except APIError as e:
+            raise ValueError("Cannot delete an item class that already has loads recorded against it") from e
+            
