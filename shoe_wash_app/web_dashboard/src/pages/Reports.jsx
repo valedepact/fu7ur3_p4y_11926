@@ -46,11 +46,13 @@ export default function Reports() {
   const byItemClass = useMemo(() => {
     const map = {};
     for (const l of loads) {
-      if (!map[l.item_class_id]) {
-        map[l.item_class_id] = { revenue: 0, cost: 0 };
+      for (const it of l.items) {
+        if (!map[it.item_class_id]) {
+          map[it.item_class_id] = { revenue: 0, cost: 0 };
+        }
+        map[it.item_class_id].revenue += it.price_charged * it.quantity;
+        map[it.item_class_id].cost += it.unit_cost * it.quantity;
       }
-      map[l.item_class_id].revenue += l.price_charged * l.quantity;
-      map[l.item_class_id].cost += l.unit_cost * l.quantity;
     }
     return Object.entries(map).map(([id, v]) => ({
       id: Number(id),
@@ -61,7 +63,7 @@ export default function Reports() {
       margin: v.revenue ? ((v.revenue - v.cost) / v.revenue) * 100 : 0,
     })).sort((a, b) => b.revenue - a.revenue);
   }, [loads, itemClasses]);
-
+  
   const totalPopularRevenue = popularItems.reduce((sum, p) => sum + p.total_revenue, 0);
   const donutData = popularItems.map((p) => ({ name: itemClassName(p.item_class_id), value: p.total_revenue }));
 

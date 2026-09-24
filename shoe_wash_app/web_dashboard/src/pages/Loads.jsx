@@ -11,6 +11,13 @@ const PAYMENT_STATUSES = ["owing", "partial", "paid"];
 const DELIVERY_METHODS = ["walk_in", "pickup_delivery"];
 const PAGE_SIZE = 8;
 
+const loadTotal = (load) => load.items.reduce((sum, it) => sum + it.price_charged * it.quantity, 0);
+const loadQuantity = (load) => load.items.reduce((sum, it) => sum + it.quantity, 0);
+const loadSummary = (load, itemClasses) =>
+  load.items
+    .map((it) => `${it.quantity}x ${itemClasses.find((c) => c.id === it.item_class_id)?.name ?? `#${it.item_class_id}`}`)
+    .join(", ");
+
 export default function Loads() {
   const { period, setPeriod, customRange, setCustomRange, range } = usePeriod();
   const [loads, setLoads] = useState([]);
@@ -58,8 +65,8 @@ export default function Loads() {
     result = [...result].sort((a, b) => {
       if (sortBy === "newest") return new Date(b.dropped_off_at) - new Date(a.dropped_off_at);
       if (sortBy === "oldest") return new Date(a.dropped_off_at) - new Date(b.dropped_off_at);
-      if (sortBy === "amount_high") return (b.price_charged * b.quantity) - (a.price_charged * a.quantity);
-      if (sortBy === "amount_low") return (a.price_charged * a.quantity) - (b.price_charged * b.quantity);
+      if (sortBy === "amount_high") return loadTotal(b) - loadTotal(a);
+      if (sortBy === "amount_low") return loadTotal(a) - loadTotal(b);
       return 0;
     });
 
@@ -75,9 +82,13 @@ export default function Loads() {
       .createLoad({
         customer_name: form.get("customer_name"),
         customer_phone: form.get("customer_phone") || null,
-        item_class_id: Number(form.get("item_class_id")),
-        quantity: Number(form.get("quantity")),
-        price_charged: form.get("price_charged") ? Number(form.get("price_charged")) : null,
+        items: [
+          {
+            item_class_id: Number(form.get("item_class_id")),
+            quantity: Number(form.get("quantity")),
+            price_charged: form.get("price_charged") ? Number(form.get("price_charged")) : null,
+          },
+        ],
         expected_pickup_date: form.get("expected_pickup_date") || null,
       })
       .then(() => { e.target.reset(); setShowForm(false); refresh(); })
@@ -126,11 +137,14 @@ export default function Loads() {
             {itemClasses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
           <input name="quantity" type="number" min="1" placeholder="Quantity" required />
-          <input name="price_charged" type="number" min="0.01" step="0.01" placeholder="Price (optional)" />
+          <input name="price_charged" type="number" step="0.01" placeholder="Price (optional)" />
           <input name="expected_pickup_date" type="date" />
           <button type="submit">Save Load</button>
         </form>
       )}
+      <p className="topbar-subtitle" style={{ marginTop: showForm ? "-1rem" : 0, marginBottom: "1.5rem" }}>
+        {showForm && "This form logs one item type per load for now \u2014 tell me if you want multi-item entry here too."}
+      </p>
 
       <table>
         <thead>
@@ -144,7 +158,7 @@ export default function Loads() {
             <tr key={load.id}>
               <td>{String((page - 1) * PAGE_SIZE + i + 1).padStart(3, "0")}</td>
               <td>{customerName(load.customer_id)}</td>
-              <td>{load.quantity}</td>
+              <td>{loadSummary(load, itemClasses)} &mdash; UGX {loadTotal(load).toLocaleString()}</td>
               <td>{new Date(load.dropped_off_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</td>
               <td>{load.expected_pickup_date ? new Date(load.expected_pickup_date).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "--"}</td>
               <td>

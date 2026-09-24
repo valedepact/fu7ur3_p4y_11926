@@ -81,7 +81,9 @@ export default function Overview() {
               <tr key={load.id}>
                 <td>Load logged &mdash; customer #{load.customer_id}</td>
                 <td>{new Date(load.dropped_off_at).toLocaleDateString()}</td>
-                <td style={{ textAlign: "right" }}>UGX {(load.price_charged * load.quantity).toLocaleString()}</td>
+                <td style={{ textAlign: "right" }}>
+                  UGX {load.items.reduce((sum, it) => sum + it.price_charged * it.quantity, 0).toLocaleString()}
+                </td>
               </tr>
             ))}
             {recentActivity.length === 0 && (
