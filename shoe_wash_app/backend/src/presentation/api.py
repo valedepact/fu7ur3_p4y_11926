@@ -125,6 +125,7 @@ class ExpenseCreate(BaseModel):
     category: str
     amount: float
     note: Optional[str] = None
+    expense_date: Optional[date] = None
 
 
 class StatusUpdate(BaseModel):
@@ -242,9 +243,9 @@ def create_expense(payload: ExpenseCreate):
         category=payload.category,
         amount=payload.amount,
         note=payload.note,
+        on_date=payload.expense_date,
     )
     return asdict(expense)
-
 
 @app.get("/expenses")
 def list_expenses(start: date, end: date):
